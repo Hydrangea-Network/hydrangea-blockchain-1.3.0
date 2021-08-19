@@ -7,7 +7,7 @@ import pytest
 from clvm_tools import binutils
 
 from chia.consensus.condition_costs import ConditionCost
-from chia.consensus.cost_calculator import NPCResult, calculate_cost_of_program
+from chia.consensus.cost_calculator import NPCResult
 from chia.full_node.bundle_tools import simple_solution_generator
 from chia.full_node.mempool_check_conditions import get_name_puzzle_conditions, get_puzzle_and_solution_for_coin
 from chia.types.blockchain_format.program import Program, SerializedProgram
@@ -82,22 +82,20 @@ class TestCostCalculation:
             mempool_mode=False,
         )
 
-        cost = calculate_cost_of_program(program.program, npc_result, test_constants.COST_PER_BYTE)
-
         assert npc_result.error is None
         assert len(bytes(program.program)) == 433
 
-        coin_name = npc_result.npc_list[0].coin_name
+        coin_name = npc_result.conds.spends[0].coin_id
         error, puzzle, solution = get_puzzle_and_solution_for_coin(
             program, coin_name, test_constants.MAX_BLOCK_COST_CLVM
         )
         assert error is None
 
-        assert npc_result.clvm_cost == 404560
+        assert npc_result.conds.cost == ConditionCost.CREATE_COIN.value + ConditionCost.AGG_SIG.value + 404560
 
         # Create condition + agg_sig_condition + length + cpu_cost
         assert (
-            cost
+            npc_result.cost
             == ConditionCost.CREATE_COIN.value
             + ConditionCost.AGG_SIG.value
             + len(bytes(program.program)) * test_constants.COST_PER_BYTE
@@ -154,7 +152,7 @@ class TestCostCalculation:
         )
         assert npc_result.error is None
 
-        coin_name = npc_result.npc_list[0].coin_name
+        coin_name = npc_result.conds.spends[0].coin_id
         error, puzzle, solution = get_puzzle_and_solution_for_coin(
             generator, coin_name, test_constants.MAX_BLOCK_COST_CLVM
         )
@@ -202,7 +200,7 @@ class TestCostCalculation:
         end_time = time.time()
         duration = end_time - start_time
         assert npc_result.error is None
-        assert len(npc_result.npc_list) == LARGE_BLOCK_COIN_CONSUMED_COUNT
+        assert len(npc_result.conds.spends) == LARGE_BLOCK_COIN_CONSUMED_COUNT
         log.info(f"Time spent: {duration}")
 
         assert duration < 1
@@ -226,14 +224,14 @@ class TestCostCalculation:
         npc_result: NPCResult = get_name_puzzle_conditions(generator, 10000000, cost_per_byte=0, mempool_mode=False)
 
         assert npc_result.error is not None
-        assert npc_result.clvm_cost == 0
+        assert npc_result.cost == 0
 
         # raise the max cost to make sure this passes
         # ensure we pass if the program does not exceeds the cost
         npc_result = get_name_puzzle_conditions(generator, 20000000, cost_per_byte=0, mempool_mode=False)
 
         assert npc_result.error is None
-        assert npc_result.clvm_cost > 10000000
+        assert npc_result.cost > 10000000
 
     @pytest.mark.asyncio
     async def test_standard_tx(self):

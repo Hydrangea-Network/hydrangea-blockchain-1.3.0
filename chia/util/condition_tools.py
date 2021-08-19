@@ -1,7 +1,6 @@
 from typing import Dict, List, Optional, Tuple, Set
 
 from chia.types.announcement import Announcement
-from chia.types.name_puzzle_condition import NPC
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program, SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32, bytes48
@@ -10,6 +9,7 @@ from chia.types.condition_with_args import ConditionWithArgs
 from chia.util.clvm import int_from_bytes
 from chia.util.errors import ConsensusError, Err
 from chia.util.ints import uint64
+from chia.consensus.cost_calculator import SpendBundleConditions
 
 # TODO: review each `assert` and consider replacing with explicit checks
 #       since asserts can be stripped with python `-OO` flag
@@ -64,25 +64,17 @@ def conditions_by_opcode(
     return d
 
 
-def pkm_pairs(npc_list: List[NPC], additional_data: bytes) -> Tuple[List[bytes48], List[bytes]]:
+def pkm_pairs(conditions: SpendBundleConditions, additional_data: bytes) -> Tuple[List[bytes48], List[bytes]]:
     ret: Tuple[List[bytes48], List[bytes]] = ([], [])
 
-    for npc in npc_list:
-        for opcode, l in npc.conditions:
-            if opcode == ConditionOpcode.AGG_SIG_UNSAFE:
-                for cwa in l:
-                    assert len(cwa.vars) == 2
-                    assert len(cwa.vars[0]) == 48 and len(cwa.vars[1]) <= 1024
-                    assert cwa.vars[0] is not None and cwa.vars[1] is not None
-                    ret[0].append(bytes48(cwa.vars[0]))
-                    ret[1].append(cwa.vars[1])
-            elif opcode == ConditionOpcode.AGG_SIG_ME:
-                for cwa in l:
-                    assert len(cwa.vars) == 2
-                    assert len(cwa.vars[0]) == 48 and len(cwa.vars[1]) <= 1024
-                    assert cwa.vars[0] is not None and cwa.vars[1] is not None
-                    ret[0].append(bytes48(cwa.vars[0]))
-                    ret[1].append(cwa.vars[1] + npc.coin_name + additional_data)
+    for pk, msg in conditions.agg_sig_unsafe:
+        ret[0].append(bytes48(pk))
+        ret[1].append(msg)
+
+    for spend in conditions.spends:
+        for pk, msg in spend.agg_sig_me:
+            ret[0].append(bytes48(pk))
+            ret[1].append(msg + spend.coin_id + additional_data)
     return ret
 
 

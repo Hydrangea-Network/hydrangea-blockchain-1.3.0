@@ -4,7 +4,6 @@ from typing import List
 from blspy import G2Element
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import SerializedProgram, INFINITE_COST
-from chia.types.condition_opcodes import ConditionOpcode
 from chia.util.chain_utils import additions_for_solution, fee_for_solution
 from chia.util.streamable import Streamable, streamable
 
@@ -41,12 +40,12 @@ class CoinSpend(Streamable):
         npc_result = get_name_puzzle_conditions(
             generator, INFINITE_COST, cost_per_byte=DEFAULT_CONSTANTS.COST_PER_BYTE, mempool_mode=False
         )
+        assert npc_result is not None
+        assert npc_result.conds is not None
         h_list = []
-        for npc in npc_result.npc_list:
-            for opcode, conditions in npc.conditions:
-                if opcode == ConditionOpcode.CREATE_COIN:
-                    for condition in conditions:
-                        if len(condition.vars) > 2 and condition.vars[2] != b"":
-                            h_list.append(condition.vars[2])
+        for spend in npc_result.conds.spends:
+            for _, _, hint in spend.create_coin:
+                if hint != b"":
+                    h_list.append(hint)
 
         return h_list

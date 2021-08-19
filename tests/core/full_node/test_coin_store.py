@@ -107,7 +107,7 @@ class TestCoinStoreWithBlocks:
                             cost_per_byte=bt.constants.COST_PER_BYTE,
                             mempool_mode=False,
                         )
-                        tx_removals, tx_additions = tx_removals_and_additions(npc_result.npc_list)
+                        tx_removals, tx_additions = tx_removals_and_additions(npc_result.conds)
                     else:
                         tx_removals, tx_additions = [], []
 

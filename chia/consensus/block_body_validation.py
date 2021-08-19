@@ -3,38 +3,34 @@ import logging
 from typing import Dict, List, Optional, Set, Tuple, Union, Callable
 
 from chiabip158 import PyBIP158
-from clvm.casts import int_from_bytes
 
 from chia.consensus.block_record import BlockRecord
 from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward
 from chia.consensus.block_root_validation import validate_block_merkle_roots
-from chia.full_node.mempool_check_conditions import mempool_check_conditions_dict
+from chia.full_node.mempool_check_conditions import mempool_check_time_locks
 from chia.consensus.blockchain_interface import BlockchainInterface
 from chia.consensus.coinbase import create_farmer_coin, create_pool_coin
 from chia.consensus.constants import ConsensusConstants
-from chia.consensus.cost_calculator import NPCResult, calculate_cost_of_program
+from chia.consensus.cost_calculator import NPCResult
 from chia.consensus.find_fork_point import find_fork_point_in_chain
 from chia.full_node.block_store import BlockStore
 from chia.full_node.coin_store import CoinStore
 from chia.full_node.mempool_check_conditions import get_name_puzzle_conditions
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.sized_bytes import bytes32
+from chia.types.blockchain_format.sized_bytes import bytes32, bytes48
 from chia.types.coin_record import CoinRecord
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.condition_with_args import ConditionWithArgs
 from chia.types.full_block import FullBlock
 from chia.types.generator_types import BlockGenerator
-from chia.types.name_puzzle_condition import NPC
 from chia.types.unfinished_block import UnfinishedBlock
 from chia.util import cached_bls
 from chia.util.condition_tools import pkm_pairs
 from chia.util.errors import Err
 from chia.util.generator_tools import (
-    additions_for_npc,
+    additions_for_spend,
     tx_removals_and_additions,
 )
 from chia.util.hash import std_hash
-from chia.util.ints import uint32, uint64, uint128
+from chia.util.ints import uint32, uint64
 
 log = logging.getLogger(__name__)
 
@@ -155,7 +151,6 @@ async def validate_block_body(
     removals: List[bytes32] = []
     coinbase_additions: List[Coin] = list(expected_reward_coins)
     additions: List[Coin] = []
-    npc_list: List[NPC] = []
     removals_puzzle_dic: Dict[bytes32, bytes32] = {}
     cost: uint64 = uint64(0)
 
@@ -197,8 +192,7 @@ async def validate_block_body(
         # Get List of names removed, puzzles hashes for removed coins and conditions created
 
         assert npc_result is not None
-        cost = calculate_cost_of_program(block.transactions_generator, npc_result, constants.COST_PER_BYTE)
-        npc_list = npc_result.npc_list
+        cost = npc_result.cost
 
         # 7. Check that cost <= MAX_BLOCK_COST_CLVM
         log.debug(
@@ -212,11 +206,12 @@ async def validate_block_body(
         if npc_result.error is not None:
             return Err(npc_result.error), None
 
-        for npc in npc_list:
-            removals.append(npc.coin_name)
-            removals_puzzle_dic[npc.coin_name] = npc.puzzle_hash
+        assert npc_result.conds is not None
 
-        additions = additions_for_npc(npc_list)
+        for spend in npc_result.conds.spends:
+            removals.append(spend.coin_id)
+            removals_puzzle_dic[spend.coin_id] = spend.puzzle_hash
+            additions.extend(additions_for_spend(spend))
     else:
         assert npc_result is None
 
@@ -324,7 +319,7 @@ async def validate_block_body(
                     cost_per_byte=constants.COST_PER_BYTE,
                     mempool_mode=False,
                 )
-                removals_in_curr, additions_in_curr = tx_removals_and_additions(curr_npc_result.npc_list)
+                removals_in_curr, additions_in_curr = tx_removals_and_additions(curr_npc_result.conds)
             else:
                 removals_in_curr = []
                 additions_in_curr = []
@@ -408,16 +403,10 @@ async def validate_block_body(
 
     fees = removed - added
     assert fees >= 0
-    assert_fee_sum: uint128 = uint128(0)
-
-    for npc in npc_list:
-        if ConditionOpcode.RESERVE_FEE in npc.condition_dict:
-            fee_list: List[ConditionWithArgs] = npc.condition_dict[ConditionOpcode.RESERVE_FEE]
-            for cvp in fee_list:
-                fee = int_from_bytes(cvp.vars[0])
-                if fee < 0:
-                    return Err.RESERVE_FEE_CONDITION_FAILED, None
-                assert_fee_sum = uint128(assert_fee_sum + fee)
+    assert_fee_sum: uint64 = uint64(0)
+    if npc_result:
+        assert npc_result.conds
+        assert_fee_sum = npc_result.conds.reserve_fee
 
     # 17. Check that the assert fee sum <= fees, and that each reserved fee is non-negative
     if fees < assert_fee_sum:
@@ -437,12 +426,12 @@ async def validate_block_body(
             return Err.WRONG_PUZZLE_HASH, None
 
     # 21. Verify conditions
-    for npc in npc_list:
-        assert height is not None
-        unspent = removal_coin_records[npc.coin_name]
-        error = mempool_check_conditions_dict(
-            unspent,
-            npc.condition_dict,
+    # verify absolute/relative height/time conditions
+    if npc_result is not None:
+        assert npc_result.conds
+        error = mempool_check_time_locks(
+            removal_coin_records,
+            npc_result.conds,
             prev_transaction_block_height,
             block.foliage_transaction_block.timestamp,
         )
@@ -450,7 +439,11 @@ async def validate_block_body(
             return error, None
 
     # create hash_key list for aggsig check
-    pairs_pks, pairs_msgs = pkm_pairs(npc_list, constants.AGG_SIG_ME_ADDITIONAL_DATA)
+    pairs_pks: List[bytes48] = []
+    pairs_msgs: List[bytes] = []
+    if npc_result:
+        assert npc_result.conds
+        pairs_pks, pairs_msgs = pkm_pairs(npc_result.conds, constants.AGG_SIG_ME_ADDITIONAL_DATA)
 
     # 22. Verify aggregated signature
     # TODO: move this to pre_validate_blocks_multiprocessing so we can sync faster

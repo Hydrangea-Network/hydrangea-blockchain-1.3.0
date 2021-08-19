@@ -67,8 +67,8 @@ def batch_pre_validate_blocks(
                 if block.height in npc_results:
                     npc_result = NPCResult.from_bytes(npc_results[block.height])
                     assert npc_result is not None
-                    if npc_result.npc_list is not None:
-                        removals, tx_additions = tx_removals_and_additions(npc_result.npc_list)
+                    if npc_result.conds is not None:
+                        removals, tx_additions = tx_removals_and_additions(npc_result.conds)
                     else:
                         removals, tx_additions = [], []
 
@@ -84,7 +84,7 @@ def batch_pre_validate_blocks(
                         cost_per_byte=constants.COST_PER_BYTE,
                         mempool_mode=False,
                     )
-                    removals, tx_additions = tx_removals_and_additions(npc_result.npc_list)
+                    removals, tx_additions = tx_removals_and_additions(npc_result.conds)
 
                 header_block = get_block_header(block, tx_additions, removals)
                 # TODO: address hint error and remove ignore
@@ -348,6 +348,6 @@ def _run_generator(
         )
         return bytes(npc_result)
     except ValidationError as e:
-        return bytes(NPCResult(uint16(e.code.value), [], uint64(0)))
+        return bytes(NPCResult(uint16(e.code.value), None, uint64(0)))
     except Exception:
-        return bytes(NPCResult(uint16(Err.UNKNOWN.value), [], uint64(0)))
+        return bytes(NPCResult(uint16(Err.UNKNOWN.value), None, uint64(0)))
