@@ -1,14 +1,16 @@
 import asyncio
-import pytest
 import time
+
+import pytest
+
 from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward
 from chia.protocols.full_node_protocol import RespondBlock
 from chia.server.server import ChiaServer
 from chia.simulator.simulator_protocol import FarmNewBlockProtocol, ReorgProtocol
 from chia.types.peer_info import PeerInfo
 from chia.util.ints import uint16, uint32, uint64
-from chia.wallet.util.transaction_type import TransactionType
 from chia.wallet.transaction_record import TransactionRecord
+from chia.wallet.util.transaction_type import TransactionType
 from chia.wallet.wallet_node import WalletNode
 from chia.wallet.wallet_state_manager import WalletStateManager
 from tests.setup_nodes import self_hostname, setup_simulators_and_wallets

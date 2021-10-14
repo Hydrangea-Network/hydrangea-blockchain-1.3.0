@@ -1,5 +1,6 @@
-from ipaddress import ip_address, IPv4Network, IPv6Network
-from typing import Iterable, Union, Any
+from ipaddress import IPv4Network, IPv6Network, ip_address
+from typing import Any, Iterable, Union
+
 from chia.server.outbound_message import NodeType
 
 

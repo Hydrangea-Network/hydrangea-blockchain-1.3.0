@@ -1,5 +1,5 @@
 import io
-from typing import List, Set, Tuple, Optional, Any
+from typing import Any, List, Optional, Set, Tuple
 
 from clvm import KEYWORD_FROM_ATOM, KEYWORD_TO_ATOM, SExp
 from clvm import run_program as default_run_program
@@ -7,12 +7,12 @@ from clvm.casts import int_from_bytes
 from clvm.EvalError import EvalError
 from clvm.operators import OP_REWRITE, OPERATOR_LOOKUP
 from clvm.serialize import sexp_from_stream, sexp_to_stream
-from clvm_rs import STRICT_MODE, deserialize_and_run_program2, serialized_length, run_generator
+from clvm_rs import STRICT_MODE, deserialize_and_run_program2, run_generator, serialized_length
 from clvm_tools.curry import curry, uncurry
 
 from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.hash import std_hash
 from chia.util.byte_types import hexstr_to_bytes
+from chia.util.hash import std_hash
 
 from .tree_hash import sha256_treehash
 

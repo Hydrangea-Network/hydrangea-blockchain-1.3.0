@@ -10,8 +10,8 @@ from blspy import AugSchemeMPL
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
 from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.spend_bundle import SpendBundle
 from chia.types.coin_spend import CoinSpend
+from chia.types.spend_bundle import SpendBundle
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.db_wrapper import DBWrapper
 from chia.util.hash import std_hash

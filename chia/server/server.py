@@ -3,10 +3,10 @@ import logging
 import ssl
 import time
 import traceback
-from ipaddress import IPv6Address, ip_address, ip_network, IPv4Network, IPv6Network
+from ipaddress import IPv4Network, IPv6Address, IPv6Network, ip_address, ip_network
 from pathlib import Path
 from secrets import token_bytes
-from typing import Any, Callable, Dict, List, Optional, Union, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
 from aiohttp import ClientSession, ClientTimeout, ServerDisconnectedError, WSCloseCode, client_exceptions, web
 from aiohttp.web_app import Application
@@ -17,7 +17,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 
 from chia.protocols.protocol_message_types import ProtocolMessageTypes
 from chia.protocols.protocol_state_machine import message_requires_reply
-from chia.protocols.protocol_timing import INVALID_PROTOCOL_BAN_SECONDS, API_EXCEPTION_BAN_SECONDS
+from chia.protocols.protocol_timing import API_EXCEPTION_BAN_SECONDS, INVALID_PROTOCOL_BAN_SECONDS
 from chia.protocols.shared_protocol import protocol_version
 from chia.server.introducer_peers import IntroducerPeers
 from chia.server.outbound_message import Message, NodeType
@@ -27,7 +27,7 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.peer_info import PeerInfo
 from chia.util.errors import Err, ProtocolError
 from chia.util.ints import uint16
-from chia.util.network import is_localhost, is_in_network
+from chia.util.network import is_in_network, is_localhost
 from chia.util.ssl_check import verify_ssl_certs_and_keys
 
 

@@ -1,11 +1,11 @@
-from dataclasses import dataclass
 import logging
 import threading
 import time
 import traceback
+from concurrent.futures.thread import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
-from concurrent.futures.thread import ThreadPoolExecutor
 
 from blspy import G1Element
 from chiapos import DiskProver
@@ -17,14 +17,14 @@ from chia.plotting.util import (
     PlotsRefreshParameter,
     get_plot_filenames,
     parse_plot_info,
-    stream_plot_info_pk,
     stream_plot_info_ph,
+    stream_plot_info_pk,
 )
+from chia.types.blockchain_format.proof_of_space import ProofOfSpace
+from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.ints import uint16
 from chia.util.path import mkdir
 from chia.util.streamable import Streamable, streamable
-from chia.types.blockchain_format.proof_of_space import ProofOfSpace
-from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.wallet.derive_keys import master_sk_to_local_sk
 
 log = logging.getLogger(__name__)

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 from blspy import PrivateKey
+
 from chia.consensus.block_record import BlockRecord
 from chia.consensus.blockchain_interface import BlockchainInterface
 from chia.consensus.constants import ConsensusConstants
@@ -52,6 +53,7 @@ from chia.util.keychain import Keychain
 from chia.util.lru_cache import LRUCache
 from chia.util.merkle_set import MerkleSet, confirm_included_already_hashed, confirm_not_included_already_hashed
 from chia.util.path import mkdir, path_from_root
+from chia.util.profiler import profile_task
 from chia.wallet.block_record import HeaderBlockRecord
 from chia.wallet.derivation_record import DerivationRecord
 from chia.wallet.settings.settings_objects import BackupInitialized
@@ -61,7 +63,6 @@ from chia.wallet.util.wallet_types import WalletType
 from chia.wallet.wallet_action import WalletAction
 from chia.wallet.wallet_blockchain import ReceiveBlockResult
 from chia.wallet.wallet_state_manager import WalletStateManager
-from chia.util.profiler import profile_task
 
 
 class WalletNode:

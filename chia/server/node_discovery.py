@@ -5,12 +5,12 @@ import traceback
 from pathlib import Path
 from random import Random
 from secrets import randbits
-from typing import Dict, Optional, List, Set
+from typing import Dict, List, Optional, Set
 
 import aiosqlite
+import dns.asyncresolver
 
 import chia.server.ws_connection as ws
-import dns.asyncresolver
 from chia.protocols import full_node_protocol, introducer_protocol
 from chia.protocols.protocol_message_types import ProtocolMessageTypes
 from chia.server.address_manager import AddressManager, ExtendedPeerInfo

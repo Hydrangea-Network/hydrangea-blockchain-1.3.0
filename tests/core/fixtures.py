@@ -16,7 +16,6 @@ from chia.util.db_wrapper import DBWrapper
 from chia.util.path import mkdir
 from tests.setup_nodes import bt, test_constants
 
-
 blockchain_db_counter: int = 0
 
 

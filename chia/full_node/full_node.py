@@ -4,6 +4,7 @@ import logging
 import random
 import time
 import traceback
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
 
@@ -30,12 +31,7 @@ from chia.full_node.signage_point import SignagePoint
 from chia.full_node.sync_store import SyncStore
 from chia.full_node.weight_proof import WeightProofHandler
 from chia.protocols import farmer_protocol, full_node_protocol, timelord_protocol, wallet_protocol
-from chia.protocols.full_node_protocol import (
-    RequestBlocks,
-    RespondBlock,
-    RespondBlocks,
-    RespondSignagePoint,
-)
+from chia.protocols.full_node_protocol import RequestBlocks, RespondBlock, RespondBlocks, RespondSignagePoint
 from chia.protocols.protocol_message_types import ProtocolMessageTypes
 from chia.protocols.wallet_protocol import CoinState, CoinStateUpdate
 from chia.server.node_discovery import FullNodePeers
@@ -55,14 +51,13 @@ from chia.types.spend_bundle import SpendBundle
 from chia.types.unfinished_block import UnfinishedBlock
 from chia.util.bech32m import encode_puzzle_hash
 from chia.util.check_fork_next_block import check_fork_next_block
+from chia.util.db_synchronous import db_synchronous_on
 from chia.util.db_wrapper import DBWrapper
 from chia.util.errors import ConsensusError, Err
 from chia.util.ints import uint8, uint32, uint64, uint128
 from chia.util.path import mkdir, path_from_root
-from chia.util.safe_cancel_task import cancel_task_safe
 from chia.util.profiler import profile_task
-from datetime import datetime
-from chia.util.db_synchronous import db_synchronous_on
+from chia.util.safe_cancel_task import cancel_task_safe
 
 
 class FullNode:

@@ -1,7 +1,7 @@
 import logging
 from collections import Counter
 from pathlib import Path
-from time import time, sleep
+from time import sleep, time
 from typing import List
 
 from blspy import G1Element
@@ -11,8 +11,8 @@ from chia.plotting.manager import PlotManager
 from chia.plotting.util import (
     PlotRefreshResult,
     PlotsRefreshParameter,
-    get_plot_filenames,
     find_duplicate_plot_IDs,
+    get_plot_filenames,
     parse_plot_info,
 )
 from chia.util.config import load_config

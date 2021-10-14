@@ -4,11 +4,12 @@ import time
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
-from blspy import PrivateKey, G1Element
+from blspy import G1Element, PrivateKey
 
 from chia.consensus.block_rewards import calculate_base_farmer_reward
+from chia.consensus.coinbase import create_puzzlehash_for_pk
 from chia.pools.pool_wallet import PoolWallet
-from chia.pools.pool_wallet_info import create_pool_state, FARMING_TO_POOL, PoolWalletInfo, PoolState
+from chia.pools.pool_wallet_info import FARMING_TO_POOL, PoolState, PoolWalletInfo, create_pool_state
 from chia.protocols.protocol_message_types import ProtocolMessageTypes
 from chia.server.outbound_message import NodeType, make_msg
 from chia.simulator.simulator_protocol import FarmNewBlockProtocol
@@ -16,15 +17,20 @@ from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.bech32m import decode_puzzle_hash, encode_puzzle_hash
 from chia.util.byte_types import hexstr_to_bytes
+from chia.util.config import load_config
 from chia.util.ints import uint32, uint64
 from chia.util.keychain import KeyringIsLocked, bytes_to_mnemonic, generate_mnemonic
 from chia.util.path import path_from_root
 from chia.util.ws_message import WsRpcMessage, create_payload_dict
 from chia.wallet.cc_wallet.cc_wallet import CCWallet
-from chia.wallet.derive_keys import master_sk_to_singleton_owner_sk
-from chia.wallet.rl_wallet.rl_wallet import RLWallet
-from chia.wallet.derive_keys import master_sk_to_farmer_sk, master_sk_to_pool_sk, master_sk_to_wallet_sk
+from chia.wallet.derive_keys import (
+    master_sk_to_farmer_sk,
+    master_sk_to_pool_sk,
+    master_sk_to_singleton_owner_sk,
+    master_sk_to_wallet_sk,
+)
 from chia.wallet.did_wallet.did_wallet import DIDWallet
+from chia.wallet.rl_wallet.rl_wallet import RLWallet
 from chia.wallet.trade_record import TradeRecord
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.util.backup_utils import download_backup, get_backup_info, upload_backup
@@ -33,8 +39,6 @@ from chia.wallet.util.transaction_type import TransactionType
 from chia.wallet.util.wallet_types import WalletType
 from chia.wallet.wallet_info import WalletInfo
 from chia.wallet.wallet_node import WalletNode
-from chia.util.config import load_config
-from chia.consensus.coinbase import create_puzzlehash_for_pk
 
 # Timeout for response from wallet/full node for sending a transaction
 TIMEOUT = 30
