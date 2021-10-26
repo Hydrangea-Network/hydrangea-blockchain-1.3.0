@@ -1,5 +1,6 @@
 import logging
 import time
+from dataclasses import replace
 from typing import Any, Dict, List, Optional, Set
 
 from blspy import G1Element
@@ -334,9 +335,11 @@ class Wallet:
         for coin in coins:
             self.log.info(f"coin from coins {coin}")
             puzzle: Program = await self.puzzle_for_puzzle_hash(coin.puzzle_hash)
+            solution: Program = Program.to(0)
 
             # Only one coin creates outputs
             if primary_announcement_hash is None and origin_id in (None, coin.name()):
+                origin_id = coin.name()
                 if primaries is None:
                     primaries = [{"puzzlehash": newpuzzlehash, "amount": amount}]
                 else:
@@ -355,16 +358,20 @@ class Wallet:
                     coin_announcements_to_assert=announcements_to_consume,
                 )
                 primary_announcement_hash = Announcement(coin.name(), message).name()
-            else:
-                if primary_announcement_hash is None:
-                    raise ValueError("origin_id is not the set of selected coins")
-                solution = self.make_solution(coin_announcements_to_assert={primary_announcement_hash})
 
             spends.append(
                 CoinSpend(
                     coin, SerializedProgram.from_bytes(bytes(puzzle)), SerializedProgram.from_bytes(bytes(solution))
                 )
             )
+
+        if primary_announcement_hash is None:
+            raise ValueError("origin_id is not in the set of selected coins")
+
+        for index, spend in enumerate(spends):
+            if spend.coin.name() != origin_id:
+                solution = self.make_solution(coin_announcements_to_assert={primary_announcement_hash})
+                spends[index] = replace(spend, solution=solution)
 
         self.log.info(f"Spends is {spends}")
         return spends
