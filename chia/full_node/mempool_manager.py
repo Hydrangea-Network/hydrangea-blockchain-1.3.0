@@ -17,6 +17,7 @@ from chia.full_node.coin_store import CoinStore
 from chia.full_node.mempool import Mempool
 from chia.full_node.mempool_check_conditions import mempool_check_conditions_dict, get_name_puzzle_conditions
 from chia.full_node.pending_tx_cache import PendingTxCache
+from chia.full_node.fee_tracker import FeeTracker
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
@@ -75,7 +76,7 @@ def validate_clvm_and_signature(
 
 
 class MempoolManager:
-    def __init__(self, coin_store: CoinStore, consensus_constants: ConsensusConstants):
+    def __init__(self, coin_store: CoinStore, consensus_constants: ConsensusConstants, config, fee_tracker):
         self.constants: ConsensusConstants = consensus_constants
         self.constants_json = recurse_jsonify(dataclasses.asdict(self.constants))
 
@@ -101,6 +102,10 @@ class MempoolManager:
         # The mempool will correspond to a certain peak
         self.peak: Optional[BlockRecord] = None
         self.mempool: Mempool = Mempool(self.mempool_max_total_cost)
+        self.lock: asyncio.Lock = asyncio.Lock()
+        self.log = log
+        self.config = config
+        self.fee_tracker: FeeTracker = fee_tracker
 
     def shut_down(self):
         self.pool.shutdown(wait=True)
@@ -264,6 +269,7 @@ class MempoolManager:
         npc_result: NPCResult,
         spend_name: bytes32,
         program: Optional[SerializedProgram] = None,
+        inserted_height: Optional[uint32] = None,
     ) -> Tuple[Optional[uint64], MempoolInclusionStatus, Optional[Err]]:
         """
         Tries to add spend bundle to the mempool
@@ -272,6 +278,11 @@ class MempoolManager:
         start_time = time.time()
         if self.peak is None:
             return None, MempoolInclusionStatus.FAILED, Err.MEMPOOL_NOT_INITIALIZED
+
+        if inserted_height is None:
+            item_height = self.peak.height
+        else:
+            item_height = inserted_height
 
         npc_list = npc_result.npc_list
         assert npc_result.error is None
@@ -398,7 +409,7 @@ class MempoolManager:
                 conflicting_pool_items[sb.name] = sb
             if not self.can_replace(conflicting_pool_items, removal_record_dict, fees, fees_per_cost):
                 potential = MempoolItem(
-                    new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program
+                    new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program, None
                 )
                 self.potential_cache.add(potential)
                 return (
@@ -437,7 +448,7 @@ class MempoolManager:
             if error:
                 if error is Err.ASSERT_HEIGHT_ABSOLUTE_FAILED or error is Err.ASSERT_HEIGHT_RELATIVE_FAILED:
                     potential = MempoolItem(
-                        new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program
+                        new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program, None
                     )
                     self.potential_cache.add(potential)
                     return uint64(cost), MempoolInclusionStatus.PENDING, error
@@ -452,7 +463,9 @@ class MempoolManager:
             for mempool_item in conflicting_pool_items.values():
                 self.mempool.remove_from_pool(mempool_item)
 
-        new_item = MempoolItem(new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program)
+        new_item = MempoolItem(
+            new_spend, uint64(fees), npc_result, cost, spend_name, additions, removals, program, item_height
+        )
         self.mempool.add_to_pool(new_item)
         now = time.time()
         log.log(
@@ -523,7 +536,7 @@ class MempoolManager:
 
         old_pool = self.mempool
         self.mempool = Mempool(self.mempool_max_total_cost)
-
+        included_items = []
         for item in old_pool.spends.values():
             if use_optimization:
                 # If use_optimization, we will automatically re-add all bundles where none of it's removals were
@@ -541,8 +554,9 @@ class MempoolManager:
                     # successfully added to the new mempool. In this case, remove it from seen, so in the case of a
                     # reorg, it can be resubmitted
                     self.remove_seen(item.spend_bundle_name)
+                    included_items.append(item)
             else:
-                _, result, _ = await self.add_spendbundle(
+                _, result, err = await self.add_spendbundle(
                     item.spend_bundle, item.npc_result, item.spend_bundle_name, item.program
                 )
                 # If the spend bundle was confirmed or conflicting (can no longer be in mempool), it won't be
@@ -550,6 +564,12 @@ class MempoolManager:
                 # it can be resubmitted
                 if result != MempoolInclusionStatus.SUCCESS:
                     self.remove_seen(item.spend_bundle_name)
+                if result == MempoolInclusionStatus.FAILED and err == Err.DOUBLE_SPEND:
+                    # it was in mempool, and after new block it's a double spend.
+                    # Item is most likely included in the block.
+                    included_items.append(item)
+
+        self.fee_tracker.process_block(new_peak.height, included_items)
 
         potential_txs = self.potential_cache.drain()
         txs_added = []
@@ -559,6 +579,9 @@ class MempoolManager:
             )
             if status == MempoolInclusionStatus.SUCCESS:
                 txs_added.append((item.spend_bundle, item.npc_result, item.spend_bundle_name))
+            if status == MempoolInclusionStatus.FAILED and err == Err.DOUBLE_SPEND:
+                included_items.append(item)
+
         log.info(
             f"Size of mempool: {len(self.mempool.spends)} spends, cost: {self.mempool.total_mempool_cost} "
             f"minimum fee to get in: {self.mempool.get_min_fee_rate(100000)}"
