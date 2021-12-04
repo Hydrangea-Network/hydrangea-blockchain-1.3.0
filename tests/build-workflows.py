@@ -39,7 +39,7 @@ def read_file(filename):
 
 # Input file
 def workflow_yaml_template_text(os):
-    return Path(f"runner-templates/build-test-{os}").read_text()
+    return Path(f"runner_templates/build-test-{os}").read_text()
 
 
 # Output files
@@ -67,8 +67,8 @@ def test_files_in_dir(dir):
 # -----
 
 default_replacements = {
-    "INSTALL_TIMELORD": read_file("runner-templates/install-timelord.include.yml").rstrip(),
-    "CHECKOUT_TEST_BLOCKS_AND_PLOTS": read_file("runner-templates/checkout-test-plots.include.yml").rstrip(),
+    "INSTALL_TIMELORD": read_file("runner_templates/install-timelord.include.yml").rstrip(),
+    "CHECKOUT_TEST_BLOCKS_AND_PLOTS": read_file("runner_templates/checkout-test-plots.include.yml").rstrip(),
     "TEST_DIR": "",
     "TEST_NAME": "",
     "PYTEST_PARALLEL_ARGS": "",
