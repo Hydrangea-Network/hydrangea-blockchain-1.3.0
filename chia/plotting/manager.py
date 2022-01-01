@@ -5,7 +5,6 @@ import time
 import traceback
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, ItemsView, ValuesView, KeysView
-from concurrent.futures.thread import ThreadPoolExecutor
 
 from blspy import G1Element
 from chiapos import DiskProver
@@ -342,9 +341,6 @@ class PlotManager:
                     self._refresh_callback(PlotRefreshEvents.batch_processed, batch_result)
                     if remaining == 0:
                         break
-                    batch_sleep = self.refresh_parameter.batch_sleep_milliseconds
-                    self.log.debug(f"refresh_plots: Sleep {batch_sleep} milliseconds")
-                    time.sleep(float(batch_sleep) / 1000.0)
 
                 if self._refreshing_enabled:
                     self._refresh_callback(PlotRefreshEvents.done, total_result)
@@ -529,11 +525,14 @@ class PlotManager:
 
             return new_plot_info
 
-        with self, ThreadPoolExecutor() as executor:
-            plots_refreshed: Dict[Path, PlotInfo] = {}
-            for new_plot in executor.map(process_file, plot_paths):
+        plots_refreshed: Dict[Path, PlotInfo] = {}
+        for path in plot_paths:
+            with self:
+                new_plot = process_file(path)
                 if new_plot is not None:
                     plots_refreshed[Path(new_plot.prover.get_filename())] = new_plot
+
+        with self:
             self.plots.update(plots_refreshed)
 
         result.duration = time.time() - start_time
