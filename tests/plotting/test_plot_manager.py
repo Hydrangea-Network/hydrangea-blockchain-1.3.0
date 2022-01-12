@@ -19,7 +19,7 @@ from chia.plotting.util import (
 )
 from chia.util.config import create_default_chia_config
 from chia.util.path import mkdir
-from chia.plotting.manager import PlotManager
+from chia.plotting.manager import Cache, PlotManager
 from tests.block_tools import get_plot_dir
 from tests.plotting.util import get_test_plots
 from tests.setup_nodes import bt
@@ -186,7 +186,6 @@ async def test_plot_refreshing(test_environment):
         assert len(get_plot_directories(env.root_path)) == expected_directories
         await env.refresh_tester.run(expected_result)
         assert len(env.refresh_tester.plot_manager.plots) == expect_total_plots
-        assert len(env.refresh_tester.plot_manager.cache) == expect_total_plots
         assert len(env.refresh_tester.plot_manager.get_duplicates()) == expect_duplicates
         assert len(env.refresh_tester.plot_manager.failed_to_open_filenames) == 0
 
@@ -479,10 +478,18 @@ async def test_plot_info_caching(test_environment):
     assert env.refresh_tester.plot_manager.cache.path().exists()
     refresh_tester: PlotRefreshTester = PlotRefreshTester(env.root_path)
     plot_manager = refresh_tester.plot_manager
+    plot_manager.set_public_keys(bt.plot_manager.farmer_public_keys, bt.plot_manager.pool_public_keys)
     plot_manager.cache.load()
-    assert len(plot_manager.cache) == len(plot_manager.cache)
+    assert len(plot_manager.cache) == len(env.refresh_tester.plot_manager.cache)
+    for path, cache_entry in env.refresh_tester.plot_manager.cache.items():
+        cache_entry_new = plot_manager.cache.get(path)
+        assert cache_entry_new.prover.to_bytes() == cache_entry.prover.to_bytes()
+        assert cache_entry_new.farmer_public_key == cache_entry.farmer_public_key
+        assert cache_entry_new.pool_public_key == cache_entry.pool_public_key
+        assert cache_entry_new.pool_contract_puzzle_hash == cache_entry.pool_contract_puzzle_hash
+        assert cache_entry_new.plot_public_key == cache_entry.plot_public_key
     await refresh_tester.run(expected_result)
-    for path, plot_info in plot_manager.plots.items():
+    for path, plot_info in env.refresh_tester.plot_manager.plots.items():
         assert path in plot_manager.plots
         assert plot_manager.plots[path].prover.get_filename() == plot_info.prover.get_filename()
         assert plot_manager.plots[path].prover.get_id() == plot_info.prover.get_id()
@@ -493,9 +500,9 @@ async def test_plot_info_caching(test_environment):
         assert plot_manager.plots[path].plot_public_key == plot_info.plot_public_key
         assert plot_manager.plots[path].file_size == plot_info.file_size
         assert plot_manager.plots[path].time_modified == plot_info.time_modified
-    assert plot_manager.plot_filename_paths == plot_manager.plot_filename_paths
-    assert plot_manager.failed_to_open_filenames == plot_manager.failed_to_open_filenames
-    assert plot_manager.no_key_filenames == plot_manager.no_key_filenames
+    assert plot_manager.plot_filename_paths == env.refresh_tester.plot_manager.plot_filename_paths
+    assert plot_manager.failed_to_open_filenames == env.refresh_tester.plot_manager.failed_to_open_filenames
+    assert plot_manager.no_key_filenames == env.refresh_tester.plot_manager.no_key_filenames
     plot_manager.stop_refreshing()
     # Modify the content of the plot_manager.dat
     with open(plot_manager.cache.path(), "r+b") as file:
@@ -509,6 +516,40 @@ async def test_plot_info_caching(test_environment):
     await refresh_tester.run(expected_result)
     assert len(plot_manager.plots) == len(plot_manager.plots)
     plot_manager.stop_refreshing()
+
+
+@pytest.mark.asyncio
+async def test_cache_lifetime(test_environment: TestEnvironment) -> None:
+    # Load a directory to produce a cache file
+    env: TestEnvironment = test_environment
+    expected_result = PlotRefreshResult()
+    add_plot_directory(env.root_path, str(env.dir_1.path))
+    expected_result.loaded = env.dir_1.plot_info_list()  # type: ignore[assignment]
+    expected_result.removed = []
+    expected_result.processed = len(env.dir_1)
+    expected_result.remaining = 0
+    await env.refresh_tester.run(expected_result)
+    expected_result.loaded = []
+    cache_v1: Cache = env.refresh_tester.plot_manager.cache
+    assert len(cache_v1) > 0
+    count_before = len(cache_v1)
+    # Remove half of the plots in dir1
+    for path in env.dir_1.path_list()[0 : int(len(env.dir_1) / 2)]:
+        expected_result.processed -= 1
+        expected_result.removed.append(path)
+        unlink(path)
+    # Modify the `last_use` timestamp of all cache entries to let them expire
+    last_use_before = time.time() - Cache.expiry_seconds - 1
+    for cache_entry in cache_v1.values():
+        cache_entry.last_use = last_use_before
+        assert cache_entry.expired(Cache.expiry_seconds)
+    # The next refresh cycle will now lead to half of the cache entries being removed because they are expired and
+    # the related plots do not longer exist.
+    await env.refresh_tester.run(expected_result)
+    assert len(cache_v1) == count_before - len(expected_result.removed)
+    # The other half of the cache entries should have a different `last_use` value now.
+    for cache_entry in cache_v1.values():
+        assert cache_entry.last_use != last_use_before
 
 
 @pytest.mark.parametrize(

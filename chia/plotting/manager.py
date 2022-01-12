@@ -4,7 +4,7 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, ItemsView, ValuesView, KeysView
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from blspy import G1Element
@@ -22,7 +22,7 @@ from chia.plotting.util import (
     stream_plot_info_ph,
 )
 from chia.util.generator_tools import list_to_batches
-from chia.util.ints import uint16
+from chia.util.ints import uint16, uint64
 from chia.util.path import mkdir
 from chia.util.streamable import Streamable, streamable
 from chia.types.blockchain_format.proof_of_space import ProofOfSpace
@@ -31,52 +31,83 @@ from chia.wallet.derive_keys import master_sk_to_local_sk
 
 log = logging.getLogger(__name__)
 
-CURRENT_VERSION: uint16 = uint16(0)
+CURRENT_VERSION: int = 1
 
 
 @dataclass(frozen=True)
 @streamable
-class CacheEntry(Streamable):
+class DiskCacheEntry(Streamable):
+    prover_data: bytes
+    farmer_public_key: G1Element
     pool_public_key: Optional[G1Element]
     pool_contract_puzzle_hash: Optional[bytes32]
     plot_public_key: G1Element
+    last_use: uint64
 
 
 @dataclass(frozen=True)
 @streamable
 class DiskCache(Streamable):
     version: uint16
-    data: List[Tuple[bytes32, CacheEntry]]
+    data: List[Tuple[str, DiskCacheEntry]]
+
+
+@dataclass
+class CacheEntry:
+    prover: DiskProver
+    farmer_public_key: G1Element
+    pool_public_key: Optional[G1Element]
+    pool_contract_puzzle_hash: Optional[bytes32]
+    plot_public_key: G1Element
+    last_use: float
+
+    def bump_last_use(self) -> None:
+        self.last_use = time.time()
+
+    def expired(self, expiry_seconds: int) -> bool:
+        return time.time() - self.last_use > expiry_seconds
 
 
 class Cache:
     _changed: bool
-    _data: Dict[bytes32, CacheEntry]
+    _data: Dict[Path, CacheEntry]
+    expiry_seconds: int = 7 * 24 * 60 * 60  # Keep the cache entries alive for 7 days after its last access
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path) -> None:
         self._changed = False
         self._data = {}
         self._path = path
         if not path.parent.exists():
             mkdir(path.parent)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._data)
 
-    def update(self, plot_id: bytes32, entry: CacheEntry):
-        self._data[plot_id] = entry
+    def update(self, path: Path, entry: CacheEntry) -> None:
+        self._data[path] = entry
         self._changed = True
 
-    def remove(self, cache_keys: List[bytes32]):
+    def remove(self, cache_keys: List[Path]) -> None:
         for key in cache_keys:
             if key in self._data:
                 del self._data[key]
                 self._changed = True
 
-    def save(self):
+    def save(self) -> None:
         try:
+            disk_cache_entries: Dict[str, DiskCacheEntry] = {
+                str(path): DiskCacheEntry(
+                    cache_entry.prover.to_bytes(),
+                    cache_entry.farmer_public_key,
+                    cache_entry.pool_public_key,
+                    cache_entry.pool_contract_puzzle_hash,
+                    cache_entry.plot_public_key,
+                    uint64(int(cache_entry.last_use)),
+                )
+                for path, cache_entry in self.items()
+            }
             disk_cache: DiskCache = DiskCache(
-                CURRENT_VERSION, [(plot_id, cache_entry) for plot_id, cache_entry in self.items()]
+                uint16(CURRENT_VERSION), [(plot_id, cache_entry) for plot_id, cache_entry in disk_cache_entries.items()]
             )
             serialized: bytes = bytes(disk_cache)
             self._path.write_bytes(serialized)
@@ -85,33 +116,47 @@ class Cache:
         except Exception as e:
             log.error(f"Failed to save cache: {e}, {traceback.format_exc()}")
 
-    def load(self):
+    def load(self) -> None:
         try:
             serialized = self._path.read_bytes()
+            version = uint16.from_bytes(serialized[0:2])
             log.info(f"Loaded {len(serialized)} bytes of cached data")
-            stored_cache: DiskCache = DiskCache.from_bytes(serialized)
-            if stored_cache.version != CURRENT_VERSION:
-                # TODO, Migrate or drop current cache if the version changes.
-                raise ValueError(f"Invalid cache version {stored_cache.version}. Expected version {CURRENT_VERSION}.")
-            self._data = {plot_id: cache_entry for plot_id, cache_entry in stored_cache.data}
+            if version == CURRENT_VERSION:
+                stored_cache: DiskCache = DiskCache.from_bytes(serialized)
+                self._data = {
+                    Path(path): CacheEntry(
+                        DiskProver.from_bytes(cache_entry.prover_data),
+                        cache_entry.farmer_public_key,
+                        cache_entry.pool_public_key,
+                        cache_entry.pool_contract_puzzle_hash,
+                        cache_entry.plot_public_key,
+                        float(cache_entry.last_use),
+                    )
+                    for path, cache_entry in stored_cache.data
+                }
+            else:
+                raise ValueError(f"Invalid cache version {version}. Expected version {CURRENT_VERSION}.")
         except FileNotFoundError:
             log.debug(f"Cache {self._path} not found")
         except Exception as e:
             log.error(f"Failed to load cache: {e}, {traceback.format_exc()}")
 
-    def keys(self):
+    def keys(self) -> KeysView[Path]:
         return self._data.keys()
 
-    def items(self):
+    def values(self) -> ValuesView[CacheEntry]:
+        return self._data.values()
+
+    def items(self) -> ItemsView[Path, CacheEntry]:
         return self._data.items()
 
-    def get(self, plot_id):
-        return self._data.get(plot_id)
+    def get(self, path: Path) -> Optional[CacheEntry]:
+        return self._data.get(path)
 
-    def changed(self):
+    def changed(self) -> bool:
         return self._changed
 
-    def path(self):
+    def path(self) -> Path:
         return self._path
 
 
@@ -306,10 +351,15 @@ class PlotManager:
                 self._initial = False
 
                 # Cleanup unused cache
-                available_ids = set([plot_info.prover.get_id() for plot_info in self.plots.values()])
-                invalid_cache_keys = [plot_id for plot_id in self.cache.keys() if plot_id not in available_ids]
-                self.cache.remove(invalid_cache_keys)
-                self.log.debug(f"_refresh_task: cached entries removed: {len(invalid_cache_keys)}")
+                self.log.debug(f"_refresh_task: cached entries before cleanup: {len(self.cache)}")
+                remove_paths: List[Path] = []
+                for path, cache_entry in self.cache.items():
+                    if cache_entry.expired(Cache.expiry_seconds) and path not in self.plots:
+                        remove_paths.append(path)
+                    elif path in self.plots:
+                        cache_entry.bump_last_use()
+                self.cache.remove(remove_paths)
+                self.log.debug(f"_refresh_task: cached entries removed: {len(remove_paths)}")
 
                 if self.cache.changed():
                     self.cache.save()
@@ -362,37 +412,32 @@ class PlotManager:
                 if not file_path.exists():
                     return None
 
-                prover = DiskProver(str(file_path))
-
-                log.debug(f"process_file {str(file_path)}")
-
-                expected_size = _expected_plot_size(prover.get_size()) * UI_ACTUAL_SPACE_CONSTANT_FACTOR
                 stat_info = file_path.stat()
 
-                # TODO: consider checking if the file was just written to (which would mean that the file is still
-                # being copied). A segfault might happen in this edge case.
+                cache_entry = self.cache.get(file_path)
+                cache_hit = cache_entry is not None
+                if not cache_hit:
+                    prover = DiskProver(str(file_path))
 
-                if prover.get_size() >= 30 and stat_info.st_size < 0.98 * expected_size:
-                    log.warning(
-                        f"Not farming plot {file_path}. Size is {stat_info.st_size / (1024**3)} GiB, but expected"
-                        f" at least: {expected_size / (1024 ** 3)} GiB. We assume the file is being copied."
-                    )
-                    return None
+                    log.debug(f"process_file {str(file_path)}")
 
-                cache_entry = self.cache.get(prover.get_id())
-                if cache_entry is None:
+                    expected_size = _expected_plot_size(prover.get_size()) * UI_ACTUAL_SPACE_CONSTANT_FACTOR
+
+                    # TODO: consider checking if the file was just written to (which would mean that the file is still
+                    # being copied). A segfault might happen in this edge case.
+
+                    if prover.get_size() >= 30 and stat_info.st_size < 0.98 * expected_size:
+                        log.warning(
+                            f"Not farming plot {file_path}. Size is {stat_info.st_size / (1024 ** 3)} GiB, but expected"
+                            f" at least: {expected_size / (1024 ** 3)} GiB. We assume the file is being copied."
+                        )
+                        return None
+
                     (
                         pool_public_key_or_puzzle_hash,
                         farmer_public_key,
                         local_master_sk,
                     ) = parse_plot_info(prover.get_memo())
-
-                    # Only use plots that correct keys associated with them
-                    if farmer_public_key not in self.farmer_public_keys:
-                        log.warning(f"Plot {file_path} has a farmer public key that is not in the farmer's pk list.")
-                        self.no_key_filenames.add(file_path)
-                        if not self.open_no_key_filenames:
-                            return None
 
                     pool_public_key: Optional[G1Element] = None
                     pool_contract_puzzle_hash: Optional[bytes32] = None
@@ -402,44 +447,61 @@ class PlotManager:
                         assert isinstance(pool_public_key_or_puzzle_hash, bytes32)
                         pool_contract_puzzle_hash = pool_public_key_or_puzzle_hash
 
-                    if pool_public_key is not None and pool_public_key not in self.pool_public_keys:
-                        log.warning(f"Plot {file_path} has a pool public key that is not in the farmer's pool pk list.")
-                        self.no_key_filenames.add(file_path)
-                        if not self.open_no_key_filenames:
-                            return None
-
-                    # If a plot is in `no_key_filenames` the keys were missing in earlier refresh cycles. We can remove
-                    # the current plot from that list if its in there since we passed the key checks above.
-                    if file_path in self.no_key_filenames:
-                        self.no_key_filenames.remove(file_path)
-
                     local_sk = master_sk_to_local_sk(local_master_sk)
 
                     plot_public_key: G1Element = ProofOfSpace.generate_plot_public_key(
                         local_sk.get_g1(), farmer_public_key, pool_contract_puzzle_hash is not None
                     )
 
-                    cache_entry = CacheEntry(pool_public_key, pool_contract_puzzle_hash, plot_public_key)
-                    self.cache.update(prover.get_id(), cache_entry)
+                    cache_entry = CacheEntry(
+                        prover,
+                        farmer_public_key,
+                        pool_public_key,
+                        pool_contract_puzzle_hash,
+                        plot_public_key,
+                        time.time(),
+                    )
+                    self.cache.update(file_path, cache_entry)
+
+                assert cache_entry is not None
+                # Only use plots that correct keys associated with them
+                if cache_entry.farmer_public_key not in self.farmer_public_keys:
+                    log.warning(f"Plot {file_path} has a farmer public key that is not in the farmer's pk list.")
+                    self.no_key_filenames.add(file_path)
+                    if not self.open_no_key_filenames:
+                        return None
+
+                if cache_entry.pool_public_key is not None and cache_entry.pool_public_key not in self.pool_public_keys:
+                    log.warning(f"Plot {file_path} has a pool public key that is not in the farmer's pool pk list.")
+                    self.no_key_filenames.add(file_path)
+                    if not self.open_no_key_filenames:
+                        return None
+
+                # If a plot is in `no_key_filenames` the keys were missing in earlier refresh cycles. We can remove
+                # the current plot from that list if its in there since we passed the key checks above.
+                if file_path in self.no_key_filenames:
+                    self.no_key_filenames.remove(file_path)
 
                 with self.plot_filename_paths_lock:
                     paths: Optional[Tuple[str, Set[str]]] = self.plot_filename_paths.get(file_path.name)
                     if paths is None:
-                        paths = (str(Path(prover.get_filename()).parent), set())
+                        paths = (str(Path(cache_entry.prover.get_filename()).parent), set())
                         self.plot_filename_paths[file_path.name] = paths
                     else:
-                        paths[1].add(str(Path(prover.get_filename()).parent))
+                        paths[1].add(str(Path(cache_entry.prover.get_filename()).parent))
                         log.warning(f"Have multiple copies of the plot {file_path.name} in {[paths[0], *paths[1]]}.")
                         return None
 
                 new_plot_info: PlotInfo = PlotInfo(
-                    prover,
+                    cache_entry.prover,
                     cache_entry.pool_public_key,
                     cache_entry.pool_contract_puzzle_hash,
                     cache_entry.plot_public_key,
                     stat_info.st_size,
                     stat_info.st_mtime,
                 )
+
+                cache_entry.bump_last_use()
 
                 with counter_lock:
                     result.loaded.append(new_plot_info)
@@ -452,7 +514,7 @@ class PlotManager:
                 log.error(f"Failed to open file {file_path}. {e} {tb}")
                 self.failed_to_open_filenames[file_path] = int(time.time())
                 return None
-            log.info(f"Found plot {file_path} of size {new_plot_info.prover.get_size()}")
+            log.info(f"Found plot {file_path} of size {new_plot_info.prover.get_size()}, cache_hit: {cache_hit}")
 
             if self.show_memo:
                 plot_memo: bytes32
