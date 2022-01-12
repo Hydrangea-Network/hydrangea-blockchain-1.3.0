@@ -407,9 +407,6 @@ class PlotManager:
                     log.debug(f"Skip duplicated plot {str(file_path)}")
                     return None
             try:
-                if not file_path.exists():
-                    return None
-
                 stat_info = file_path.stat()
 
                 cache_entry = self.cache.get(file_path)
