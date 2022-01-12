@@ -520,11 +520,15 @@ class PlotManager:
             return new_plot_info
 
         plots_refreshed: Dict[Path, PlotInfo] = {}
+        time_last_sleep: float = time.time()
         for path in plot_paths:
             with self:
                 new_plot = process_file(path)
                 if new_plot is not None:
                     plots_refreshed[Path(new_plot.prover.get_filename())] = new_plot
+            if time.time() - time_last_sleep > 2:
+                time.sleep(0.001)
+                time_last_sleep = time.time()
 
         with self:
             self.plots.update(plots_refreshed)
