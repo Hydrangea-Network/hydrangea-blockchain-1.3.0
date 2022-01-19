@@ -6,8 +6,7 @@ import traceback
 from multiprocessing.pool import Pool
 from os import stat_result
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, ItemsView, ValuesView, KeysView
-from concurrent.futures import Future
+from typing import Any, Callable, Dict, List, Optional, Set, Iterator, Tuple, ItemsView, ValuesView, KeysView
 from concurrent.futures.thread import ThreadPoolExecutor
 
 from blspy import G1Element
@@ -336,9 +335,9 @@ class PlotManager:
                     for filename in filenames_to_remove:
                         del self.plot_filename_paths[filename]
 
-                for remaining, futures in self.pre_process_files(plot_paths):
+                for remaining, result_iterators in self.pre_process_files(plot_paths):
                     # Collect pre processing results first
-                    batch_result: PlotRefreshResult = self.refresh_batch([f.result() for f in futures])
+                    batch_result: PlotRefreshResult = self.refresh_batch(result_iterators)
                     if not self._refreshing_enabled:
                         self.log.debug("refresh_plots: Aborted")
                         break
@@ -436,10 +435,10 @@ class PlotManager:
 
         return result
 
-    def pre_process_files(self, file_paths: List[Path]) -> List[Tuple[int, List[Future]]]:
-        results: List[Tuple[int, List[Future]]] = []
+    def pre_process_files(self, file_paths: List[Path]) -> List[Tuple[int, Iterator[PreProcessingResult]]]:
+        results: List[Tuple[int, Iterator[PreProcessingResult]]] = []
         for remaining, batch in list_to_batches(file_paths, self.refresh_parameter.batch_size):
-            results.append((remaining, [self._thread_pool.submit(self.pre_process_file, path) for path in batch]))
+            results.append((remaining, self._thread_pool.map(self.pre_process_file, batch)))
         return results
 
     @staticmethod
@@ -520,13 +519,11 @@ class PlotManager:
 
         return new_plot_info
 
-    def refresh_batch(self, pre_processing_results) -> PlotRefreshResult:
+    def refresh_batch(self, pre_processing_iterators: Iterator[PreProcessingResult]) -> PlotRefreshResult:
         start_time: float = time.time()
-        result: PlotRefreshResult = PlotRefreshResult(processed=len(pre_processing_results))
+        result: PlotRefreshResult = PlotRefreshResult()
         plots_refreshed: Dict[Path, PlotInfo] = {}
         new_plot_info: Optional[PlotInfo]
-
-        log.debug(f"refresh_batch: {len(pre_processing_results)} files in directories")
 
         if self.match_str is not None:
             log.info(f'Only loading plots that contain "{self.match_str}" in the file or directory name')
@@ -534,7 +531,8 @@ class PlotManager:
         process_args: List[Tuple[Path, bytes]] = []
         stat_infos: Dict[Path, stat_result] = {}
         provers: Dict[Path, DiskProver] = {}
-        for pre_result in pre_processing_results:
+        for pre_result in pre_processing_iterators:
+            result.processed += 1
             if pre_result.stat_info is not None:
                 if pre_result.cache_entry is None:
                     assert pre_result.prover is not None
@@ -575,8 +573,7 @@ class PlotManager:
             self.plots.update(plots_refreshed)
             update_plots_duration: float = time.time() - update_plots_start
 
-        pre_processing_duration = sum(x.duration for x in pre_processing_results)
-        result.duration = time.time() - start_time + pre_processing_duration
+        result.duration = time.time() - start_time
 
         self.log.debug(
             f"refresh_batch: loaded {len(result.loaded)}, "
@@ -584,7 +581,7 @@ class PlotManager:
             f"remaining {result.remaining}, batch_size {self.refresh_parameter.batch_size}, "
             f"update_plots_locked: {update_plots_locked:.2f} seconds,"
             f"update_plots_duration: {update_plots_duration:.2f} seconds, "
-            f"pre_processing: {pre_processing_duration:.2f} seconds, "
+            f"pre_processing: {sum(x.duration for x in pre_processing_iterators):.2f} seconds, "
             f"process_memos: {process_memos_duration:.2f} seconds, "
             f"duration: {result.duration:.2f} seconds"
         )
