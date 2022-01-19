@@ -3,8 +3,12 @@ import logging
 import threading
 import time
 import traceback
+from multiprocessing.pool import Pool
+from os import stat_result
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, ItemsView, ValuesView, KeysView
+from concurrent.futures import Future
+from concurrent.futures.thread import ThreadPoolExecutor
 
 from blspy import G1Element
 from chiapos import DiskProver
@@ -17,8 +21,6 @@ from chia.plotting.util import (
     PlotRefreshEvents,
     get_plot_filenames,
     parse_plot_info,
-    stream_plot_info_pk,
-    stream_plot_info_ph,
 )
 from chia.util.generator_tools import list_to_batches
 from chia.util.ints import uint16, uint64
@@ -35,12 +37,18 @@ CURRENT_VERSION: int = 1
 
 @dataclass(frozen=True)
 @streamable
-class DiskCacheEntry(Streamable):
-    prover_data: bytes
+class CacheKeys(Streamable):
     farmer_public_key: G1Element
     pool_public_key: Optional[G1Element]
     pool_contract_puzzle_hash: Optional[bytes32]
     plot_public_key: G1Element
+
+
+@dataclass(frozen=True)
+@streamable
+class DiskCacheEntry(Streamable):
+    prover_data: bytes
+    keys: CacheKeys
     last_use: uint64
 
 
@@ -54,10 +62,7 @@ class DiskCache(Streamable):
 @dataclass
 class CacheEntry:
     prover: DiskProver
-    farmer_public_key: G1Element
-    pool_public_key: Optional[G1Element]
-    pool_contract_puzzle_hash: Optional[bytes32]
-    plot_public_key: G1Element
+    keys: CacheKeys
     last_use: float
 
     def bump_last_use(self) -> None:
@@ -96,11 +101,8 @@ class Cache:
         try:
             disk_cache_entries: Dict[str, DiskCacheEntry] = {
                 str(path): DiskCacheEntry(
-                    cache_entry.prover.to_bytes(),
-                    cache_entry.farmer_public_key,
-                    cache_entry.pool_public_key,
-                    cache_entry.pool_contract_puzzle_hash,
-                    cache_entry.plot_public_key,
+                    bytes(cache_entry.prover),
+                    cache_entry.keys,
                     uint64(int(cache_entry.last_use)),
                 )
                 for path, cache_entry in self.items()
@@ -125,10 +127,7 @@ class Cache:
                 self._data = {
                     Path(path): CacheEntry(
                         DiskProver.from_bytes(cache_entry.prover_data),
-                        cache_entry.farmer_public_key,
-                        cache_entry.pool_public_key,
-                        cache_entry.pool_contract_puzzle_hash,
-                        cache_entry.plot_public_key,
+                        cache_entry.keys,
                         float(cache_entry.last_use),
                     )
                     for path, cache_entry in stored_cache.data
@@ -159,6 +158,15 @@ class Cache:
         return self._path
 
 
+@dataclass
+class PreProcessingResult:
+    path: Path
+    cache_entry: Optional[CacheEntry]
+    stat_info: Optional[stat_result]
+    prover: Optional[DiskProver]
+    duration: float
+
+
 class PlotManager:
     plots: Dict[Path, PlotInfo]
     plot_filename_paths: Dict[str, Tuple[str, Set[str]]]
@@ -179,6 +187,8 @@ class PlotManager:
     _refreshing_enabled: bool
     _refresh_callback: Callable
     _initial: bool
+    _thread_pool: ThreadPoolExecutor
+    _process_pool: Pool
 
     def __init__(
         self,
@@ -209,6 +219,8 @@ class PlotManager:
         self._refreshing_enabled = False
         self._refresh_callback = refresh_callback  # type: ignore
         self._initial = True
+        self._thread_pool = ThreadPoolExecutor()
+        self._process_pool = Pool()
 
     def __enter__(self):
         self._lock.acquire()
@@ -280,7 +292,7 @@ class PlotManager:
                     return
 
                 plot_filenames: Dict[Path, List[Path]] = get_plot_filenames(self.root_path)
-                plot_directories: Set[Path] = set(plot_filenames.keys())
+                # plot_directories: Set[Path] = set(plot_filenames.keys())
                 plot_paths: List[Path] = []
                 for paths in plot_filenames.values():
                     plot_paths += paths
@@ -324,8 +336,9 @@ class PlotManager:
                     for filename in filenames_to_remove:
                         del self.plot_filename_paths[filename]
 
-                for remaining, batch in list_to_batches(plot_paths, self.refresh_parameter.batch_size):
-                    batch_result: PlotRefreshResult = self.refresh_batch(batch, plot_directories)
+                for remaining, futures in self.pre_process_files(plot_paths):
+                    # Collect pre processing results first
+                    batch_result: PlotRefreshResult = self.refresh_batch([f.result() for f in futures])
                     if not self._refreshing_enabled:
                         self.log.debug("refresh_plots: Aborted")
                         break
@@ -370,175 +383,209 @@ class PlotManager:
                 log.error(f"_refresh_callback raised: {e} with the traceback: {traceback.format_exc()}")
                 self.reset()
 
-    def refresh_batch(self, plot_paths: List[Path], plot_directories: Set[Path]) -> PlotRefreshResult:
-        start_time: float = time.time()
-        result: PlotRefreshResult = PlotRefreshResult(processed=len(plot_paths))
-        counter_lock = threading.Lock()
+    def pre_process_file(self, file_path: Path) -> PreProcessingResult:
+        result: PreProcessingResult = PreProcessingResult(file_path, None, None, None, 0.0)
+        pre_processing_start: float = time.time()
+        if not self._refreshing_enabled:
+            return result
+        filename_str = str(file_path)
+        if self.match_str is not None and self.match_str not in filename_str:
+            return result
+        if (
+            file_path in self.failed_to_open_filenames
+            and (time.time() - self.failed_to_open_filenames[file_path]) < self.refresh_parameter.retry_invalid_seconds
+        ):
+            # Try once every `refresh_parameter.retry_invalid_seconds` seconds to open the file
+            return result
 
-        log.debug(f"refresh_batch: {len(plot_paths)} files in directories {plot_directories}")
+        if file_path in self.plots:
+            return result
+
+        entry: Optional[Tuple[str, Set[str]]] = self.plot_filename_paths.get(file_path.name)
+        if entry is not None:
+            loaded_parent, duplicates = entry
+            if str(file_path.parent) in duplicates:
+                log.debug(f"Skip duplicated plot {str(file_path)}")
+                return result
+
+        try:
+            stat_info = file_path.stat()
+            prover = DiskProver(str(file_path))
+        except Exception as e:
+            tb = traceback.format_exc()
+            log.error(f"Failed to open file {file_path}. {e} {tb}")
+            self.failed_to_open_filenames[file_path] = int(time.time())
+            return result
+
+        expected_size = _expected_plot_size(prover.get_size()) * UI_ACTUAL_SPACE_CONSTANT_FACTOR
+
+        # TODO: consider checking if the file was just written to (which would mean that the file is still
+        # being copied). A segfault might happen in this edge case.
+
+        if prover.get_size() >= 30 and stat_info.st_size < 0.98 * expected_size:
+            log.warning(
+                f"Not farming plot {file_path}. Size is {stat_info.st_size / (1024 ** 3)} GiB, but expected"
+                f" at least: {expected_size / (1024 ** 3)} GiB. We assume the file is being copied."
+            )
+            return result
+
+        result.cache_entry = self.cache.get(file_path)
+        result.stat_info = stat_info
+        result.prover = prover
+        result.duration = time.time() - pre_processing_start
+
+        return result
+
+    def pre_process_files(self, file_paths: List[Path]) -> List[Tuple[int, List[Future]]]:
+        results: List[Tuple[int, List[Future]]] = []
+        for remaining, batch in list_to_batches(file_paths, self.refresh_parameter.batch_size):
+            results.append((remaining, [self._thread_pool.submit(self.pre_process_file, path) for path in batch]))
+        return results
+
+    @staticmethod
+    def process_memo(file_path: Path, memo: bytes) -> Tuple[Path, bytes]:
+        log.debug(f"process_memo {str(file_path)}")
+
+        (
+            pool_public_key_or_puzzle_hash,
+            farmer_public_key,
+            local_master_sk,
+        ) = parse_plot_info(memo)
+
+        pool_public_key: Optional[G1Element] = None
+        pool_contract_puzzle_hash: Optional[bytes32] = None
+        if isinstance(pool_public_key_or_puzzle_hash, G1Element):
+            pool_public_key = pool_public_key_or_puzzle_hash
+        else:
+            assert isinstance(pool_public_key_or_puzzle_hash, bytes32)
+            pool_contract_puzzle_hash = pool_public_key_or_puzzle_hash
+
+        local_sk = master_sk_to_local_sk(local_master_sk)
+
+        plot_public_key: G1Element = ProofOfSpace.generate_plot_public_key(
+            local_sk.get_g1(), farmer_public_key, pool_contract_puzzle_hash is not None
+        )
+
+        keys: CacheKeys = CacheKeys(farmer_public_key, pool_public_key, pool_contract_puzzle_hash, plot_public_key)
+
+        return file_path, bytes(keys)
+
+    def post_process_file(self, file_path: Path, stat_info: stat_result, cache_entry: CacheEntry) -> Optional[PlotInfo]:
+        # Only use plots that correct keys associated with them
+        if cache_entry.keys.farmer_public_key not in self.farmer_public_keys:
+            log.warning(f"Plot {file_path} has a farmer public key that is not in the farmer's pk list.")
+            self.no_key_filenames.add(file_path)
+            if not self.open_no_key_filenames:
+                return None
+
+        if (
+            cache_entry.keys.pool_public_key is not None
+            and cache_entry.keys.pool_public_key not in self.pool_public_keys
+        ):
+            log.warning(f"Plot {file_path} has a pool public key that is not in the farmer's pool pk list.")
+            self.no_key_filenames.add(file_path)
+            if not self.open_no_key_filenames:
+                return None
+
+        # If a plot is in `no_key_filenames` the keys were missing in earlier refresh cycles. We can remove
+        # the current plot from that list if its in there since we passed the key checks above.
+        if file_path in self.no_key_filenames:
+            self.no_key_filenames.remove(file_path)
+
+        with self.plot_filename_paths_lock:
+            paths: Optional[Tuple[str, Set[str]]] = self.plot_filename_paths.get(file_path.name)
+            if paths is None:
+                paths = (str(Path(cache_entry.prover.get_filename()).parent), set())
+                self.plot_filename_paths[file_path.name] = paths
+            else:
+                paths[1].add(str(Path(cache_entry.prover.get_filename()).parent))
+                log.warning(f"Have multiple copies of the plot {file_path.name} in {[paths[0], *paths[1]]}.")
+                return None
+
+        new_plot_info: PlotInfo = PlotInfo(
+            cache_entry.prover,
+            cache_entry.keys.pool_public_key,
+            cache_entry.keys.pool_contract_puzzle_hash,
+            cache_entry.keys.plot_public_key,
+            stat_info.st_size,
+            stat_info.st_mtime,
+        )
+
+        cache_entry.bump_last_use()
+
+        if file_path in self.failed_to_open_filenames:
+            del self.failed_to_open_filenames[file_path]
+
+        log.info(f"Found plot {file_path} of size {new_plot_info.prover.get_size()}")
+
+        return new_plot_info
+
+    def refresh_batch(self, pre_processing_results) -> PlotRefreshResult:
+        start_time: float = time.time()
+        result: PlotRefreshResult = PlotRefreshResult(processed=len(pre_processing_results))
+        plots_refreshed: Dict[Path, PlotInfo] = {}
+        new_plot_info: Optional[PlotInfo]
+
+        log.debug(f"refresh_batch: {len(pre_processing_results)} files in directories")
 
         if self.match_str is not None:
             log.info(f'Only loading plots that contain "{self.match_str}" in the file or directory name')
 
-        def process_file(file_path: Path) -> Optional[PlotInfo]:
-            if not self._refreshing_enabled:
-                return None
-            filename_str = str(file_path)
-            if self.match_str is not None and self.match_str not in filename_str:
-                return None
-            if (
-                file_path in self.failed_to_open_filenames
-                and (time.time() - self.failed_to_open_filenames[file_path])
-                < self.refresh_parameter.retry_invalid_seconds
-            ):
-                # Try once every `refresh_parameter.retry_invalid_seconds` seconds to open the file
-                return None
-
-            if file_path in self.plots:
-                return None
-
-            entry: Optional[Tuple[str, Set[str]]] = self.plot_filename_paths.get(file_path.name)
-            if entry is not None:
-                loaded_parent, duplicates = entry
-                if str(file_path.parent) in duplicates:
-                    log.debug(f"Skip duplicated plot {str(file_path)}")
-                    return None
-            try:
-                stat_info = file_path.stat()
-
-                cache_entry = self.cache.get(file_path)
-                cache_hit = cache_entry is not None
-                if not cache_hit:
-                    prover = DiskProver(str(file_path))
-
-                    log.debug(f"process_file {str(file_path)}")
-
-                    expected_size = _expected_plot_size(prover.get_size()) * UI_ACTUAL_SPACE_CONSTANT_FACTOR
-
-                    # TODO: consider checking if the file was just written to (which would mean that the file is still
-                    # being copied). A segfault might happen in this edge case.
-
-                    if prover.get_size() >= 30 and stat_info.st_size < 0.98 * expected_size:
-                        log.warning(
-                            f"Not farming plot {file_path}. Size is {stat_info.st_size / (1024 ** 3)} GiB, but expected"
-                            f" at least: {expected_size / (1024 ** 3)} GiB. We assume the file is being copied."
-                        )
-                        return None
-
-                    (
-                        pool_public_key_or_puzzle_hash,
-                        farmer_public_key,
-                        local_master_sk,
-                    ) = parse_plot_info(prover.get_memo())
-
-                    pool_public_key: Optional[G1Element] = None
-                    pool_contract_puzzle_hash: Optional[bytes32] = None
-                    if isinstance(pool_public_key_or_puzzle_hash, G1Element):
-                        pool_public_key = pool_public_key_or_puzzle_hash
-                    else:
-                        assert isinstance(pool_public_key_or_puzzle_hash, bytes32)
-                        pool_contract_puzzle_hash = pool_public_key_or_puzzle_hash
-
-                    local_sk = master_sk_to_local_sk(local_master_sk)
-
-                    plot_public_key: G1Element = ProofOfSpace.generate_plot_public_key(
-                        local_sk.get_g1(), farmer_public_key, pool_contract_puzzle_hash is not None
+        process_args: List[Tuple[Path, bytes]] = []
+        stat_infos: Dict[Path, stat_result] = {}
+        provers: Dict[Path, DiskProver] = {}
+        for pre_result in pre_processing_results:
+            if pre_result.stat_info is not None:
+                if pre_result.cache_entry is None:
+                    assert pre_result.prover is not None
+                    process_args.append((pre_result.path, pre_result.prover.get_memo()))
+                    stat_infos[pre_result.path] = pre_result.stat_info
+                    provers[pre_result.path] = pre_result.prover
+                else:
+                    new_plot_info = self.post_process_file(
+                        pre_result.path, pre_result.stat_info, pre_result.cache_entry
                     )
+                    if new_plot_info is not None:
+                        plots_refreshed[pre_result.path] = new_plot_info
+                        result.loaded.append(new_plot_info)
 
-                    cache_entry = CacheEntry(
-                        prover,
-                        farmer_public_key,
-                        pool_public_key,
-                        pool_contract_puzzle_hash,
-                        plot_public_key,
-                        time.time(),
-                    )
-                    self.cache.update(file_path, cache_entry)
+        process_memos_start: float = time.time()
+        process_memos_results = self._process_pool.starmap(PlotManager.process_memo, process_args)
+        process_memos_duration: float = time.time() - process_memos_start
+        for path, result_bytes in process_memos_results:
 
-                assert cache_entry is not None
-                # Only use plots that correct keys associated with them
-                if cache_entry.farmer_public_key not in self.farmer_public_keys:
-                    log.warning(f"Plot {file_path} has a farmer public key that is not in the farmer's pk list.")
-                    self.no_key_filenames.add(file_path)
-                    if not self.open_no_key_filenames:
-                        return None
-
-                if cache_entry.pool_public_key is not None and cache_entry.pool_public_key not in self.pool_public_keys:
-                    log.warning(f"Plot {file_path} has a pool public key that is not in the farmer's pool pk list.")
-                    self.no_key_filenames.add(file_path)
-                    if not self.open_no_key_filenames:
-                        return None
-
-                # If a plot is in `no_key_filenames` the keys were missing in earlier refresh cycles. We can remove
-                # the current plot from that list if its in there since we passed the key checks above.
-                if file_path in self.no_key_filenames:
-                    self.no_key_filenames.remove(file_path)
-
-                with self.plot_filename_paths_lock:
-                    paths: Optional[Tuple[str, Set[str]]] = self.plot_filename_paths.get(file_path.name)
-                    if paths is None:
-                        paths = (str(Path(cache_entry.prover.get_filename()).parent), set())
-                        self.plot_filename_paths[file_path.name] = paths
-                    else:
-                        paths[1].add(str(Path(cache_entry.prover.get_filename()).parent))
-                        log.warning(f"Have multiple copies of the plot {file_path.name} in {[paths[0], *paths[1]]}.")
-                        return None
-
-                new_plot_info: PlotInfo = PlotInfo(
-                    cache_entry.prover,
-                    cache_entry.pool_public_key,
-                    cache_entry.pool_contract_puzzle_hash,
-                    cache_entry.plot_public_key,
-                    stat_info.st_size,
-                    stat_info.st_mtime,
+            if result_bytes is None:
+                self.failed_to_open_filenames[path] = int(time.time())
+            else:
+                keys: CacheKeys = CacheKeys.from_bytes(result_bytes)
+                cache_entry = CacheEntry(
+                    provers[path],
+                    keys,
+                    time.time(),
                 )
-
-                cache_entry.bump_last_use()
-
-                with counter_lock:
+                self.cache.update(path, cache_entry)
+                new_plot_info = self.post_process_file(path, stat_infos[path], cache_entry)
+                if new_plot_info is not None:
+                    plots_refreshed[path] = new_plot_info
                     result.loaded.append(new_plot_info)
 
-                if file_path in self.failed_to_open_filenames:
-                    del self.failed_to_open_filenames[file_path]
-
-            except Exception as e:
-                tb = traceback.format_exc()
-                log.error(f"Failed to open file {file_path}. {e} {tb}")
-                self.failed_to_open_filenames[file_path] = int(time.time())
-                return None
-            log.info(f"Found plot {file_path} of size {new_plot_info.prover.get_size()}, cache_hit: {cache_hit}")
-
-            if self.show_memo:
-                plot_memo: bytes32
-                if pool_contract_puzzle_hash is None:
-                    plot_memo = stream_plot_info_pk(pool_public_key, farmer_public_key, local_master_sk)
-                else:
-                    plot_memo = stream_plot_info_ph(pool_contract_puzzle_hash, farmer_public_key, local_master_sk)
-                plot_memo_str: str = plot_memo.hex()
-                log.info(f"Memo: {plot_memo_str}")
-
-            return new_plot_info
-
-        plots_refreshed: Dict[Path, PlotInfo] = {}
-        time_last_sleep: float = time.time()
-        for path in plot_paths:
-            with self:
-                new_plot = process_file(path)
-                if new_plot is not None:
-                    plots_refreshed[Path(new_plot.prover.get_filename())] = new_plot
-            if time.time() - time_last_sleep > 2:
-                time.sleep(0.001)
-                time_last_sleep = time.time()
-
+        update_plots_start: float = time.time()
         with self:
+            update_plots_locked: float = time.time() - update_plots_start
             self.plots.update(plots_refreshed)
+            update_plots_duration: float = time.time() - update_plots_start
 
-        result.duration = time.time() - start_time
+        pre_processing_duration = sum(x.duration for x in pre_processing_results)
+        result.duration = time.time() - start_time + pre_processing_duration
 
         self.log.debug(
             f"refresh_batch: loaded {len(result.loaded)}, "
             f"removed {len(result.removed)}, processed {result.processed}, "
             f"remaining {result.remaining}, batch_size {self.refresh_parameter.batch_size}, "
+            f"update_plots_locked: {update_plots_locked:.2f} seconds,"
+            f"update_plots_duration: {update_plots_duration:.2f} seconds, "
+            f"pre_processing: {pre_processing_duration:.2f} seconds, "
+            f"process_memos: {process_memos_duration:.2f} seconds, "
             f"duration: {result.duration:.2f} seconds"
         )
         return result
