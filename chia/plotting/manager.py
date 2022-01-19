@@ -383,6 +383,7 @@ class PlotManager:
                 self.reset()
 
     def pre_process_file(self, file_path: Path) -> PreProcessingResult:
+        log.debug(f"pre_process_file {file_path} start")
         result: PreProcessingResult = PreProcessingResult(file_path, None, None, None, 0.0)
         pre_processing_start: float = time.time()
         if not self._refreshing_enabled:
@@ -410,6 +411,7 @@ class PlotManager:
         try:
             stat_info = file_path.stat()
             prover = DiskProver(str(file_path))
+            log.debug(f"pre_process_file {file_path} done")
         except Exception as e:
             tb = traceback.format_exc()
             log.error(f"Failed to open file {file_path}. {e} {tb}")
