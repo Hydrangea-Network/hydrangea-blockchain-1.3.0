@@ -34,6 +34,7 @@ upnp_dependencies = [
 ]
 
 dev_dependencies = [
+    "isort",
     "pytest",
     "pytest-asyncio",
     "flake8",
