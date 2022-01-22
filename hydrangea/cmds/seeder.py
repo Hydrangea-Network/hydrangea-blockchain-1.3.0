@@ -4,22 +4,22 @@ from typing import Dict
 
 import click
 
-import chia.cmds.configure as chia_configure
-from chia import __version__
-from chia.cmds.chia import monkey_patch_click
-from chia.cmds.init_funcs import init
-from chia.seeder.util.config import patch_default_seeder_config
-from chia.seeder.util.service_groups import all_groups, services_for_groups
-from chia.seeder.util.service import launch_service, kill_service
-from chia.util.config import load_config, save_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
+import hydrangea.cmds.configure as hydrangea_configure
+from hydrangea import __version__
+from hydrangea.cmds.hydrangea import monkey_patch_click
+from hydrangea.cmds.init_funcs import init
+from hydrangea.seeder.util.config import patch_default_seeder_config
+from hydrangea.seeder.util.service_groups import all_groups, services_for_groups
+from hydrangea.seeder.util.service import launch_service, kill_service
+from hydrangea.util.config import load_config, save_config
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 @click.group(
-    help=f"\n  Manage the Chia Seeder ({__version__})\n",
-    epilog="Try 'chia seeder start crawler' or 'chia seeder start server'",
+    help=f"\n  Manage the Hydrangea Seeder ({__version__})\n",
+    epilog="Try 'hydrangea seeder start crawler' or 'hydrangea seeder start server'",
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option("--root-path", default=DEFAULT_ROOT_PATH, help="Config file root", type=click.Path(), show_default=True)
@@ -34,7 +34,7 @@ def cli(
     ctx.obj["root_path"] = Path(root_path)
 
 
-@cli.command("version", short_help="Show the Chia Seeder version")
+@cli.command("version", short_help="Show the Hydrangea Seeder version")
 def version_cmd() -> None:
     print(__version__)
 
@@ -42,15 +42,15 @@ def version_cmd() -> None:
 @click.command("init", short_help="Create or migrate the configuration")
 @click.pass_context
 def init_cmd(ctx: click.Context, **kwargs):
-    print("Calling Chia Seeder Init...")
+    print("Calling Hydrangea Seeder Init...")
     init(None, ctx.obj["root_path"], True)
-    if os.environ.get("CHIA_ROOT", None) is not None:
-        print(f"warning, your CHIA_ROOT is set to {os.environ['CHIA_ROOT']}.")
+    if os.environ.get("HYDRANGEA_ROOT", None) is not None:
+        print(f"warning, your HYDRANGEA_ROOT is set to {os.environ['HYDRANGEA_ROOT']}.")
     root_path = ctx.obj["root_path"]
-    print(f"Chia directory {root_path}")
+    print(f"Hydrangea directory {root_path}")
     if root_path.is_dir() and not Path(root_path / "config" / "config.yaml").exists():
-        # This is reached if CHIA_ROOT is set, but there is no config
-        # This really shouldn't happen, but if we dont have the base chia config, we can't continue
+        # This is reached if HYDRANGEA_ROOT is set, but there is no config
+        # This really shouldn't happen, but if we dont have the base hydrangea config, we can't continue
         print("Config does not exist. Can't continue!")
         return -1
     patch_default_seeder_config(root_path)
@@ -88,16 +88,16 @@ def configure(
     nameserver: str,
 ):
     # Run the parent config, in case anything there (testnet) needs to be run, THEN load the config for local changes
-    chia_configure.configure(root_path, "", "", "", "", "", "", "", "", testnet, "")
+    hydrangea_configure.configure(root_path, "", "", "", "", "", "", "", "", testnet, "")
 
     config: Dict = load_config(DEFAULT_ROOT_PATH, "config.yaml")
     change_made = False
     if testnet is not None:
         if testnet == "true" or testnet == "t":
-            print("Updating Chia Seeder to testnet settings")
+            print("Updating Hydrangea Seeder to testnet settings")
             port = 58444
             network = "testnet10"
-            bootstrap = ["testnet-node.chia.net"]
+            bootstrap = ["testnet-node.http://hydrangea.website/"]
 
             config["seeder"]["port"] = port
             config["seeder"]["other_peers_port"] = port
@@ -107,10 +107,10 @@ def configure(
             change_made = True
 
         elif testnet == "false" or testnet == "f":
-            print("Updating Chia Seeder to mainnet settings")
+            print("Updating Hydrangea Seeder to mainnet settings")
             port = 8444
             network = "mainnet"
-            bootstrap = ["node.chia.net"]
+            bootstrap = ["node.http://hydrangea.website/"]
 
             config["seeder"]["port"] = port
             config["seeder"]["other_peers_port"] = port
@@ -138,7 +138,7 @@ def configure(
         change_made = True
 
     if change_made:
-        print("Restart any running Chia Seeder services for changes to take effect")
+        print("Restart any running Hydrangea Seeder services for changes to take effect")
         save_config(root_path, "config.yaml", config)
     return 0
 

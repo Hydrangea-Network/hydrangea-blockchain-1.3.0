@@ -2,8 +2,8 @@ from typing import Any
 
 import aiosqlite
 
-from chia.util.db_wrapper import DBWrapper
-from chia.util.streamable import Streamable
+from hydrangea.util.db_wrapper import DBWrapper
+from hydrangea.util.streamable import Streamable
 
 
 class KeyValStore:

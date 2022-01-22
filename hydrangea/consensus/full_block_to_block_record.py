@@ -1,20 +1,20 @@
 from typing import List, Optional, Union
 
-from chia.consensus.block_record import BlockRecord
-from chia.consensus.blockchain_interface import BlockchainInterface
-from chia.consensus.constants import ConsensusConstants
-from chia.consensus.deficit import calculate_deficit
-from chia.consensus.difficulty_adjustment import get_next_sub_slot_iters_and_difficulty
-from chia.consensus.make_sub_epoch_summary import make_sub_epoch_summary
-from chia.consensus.pot_iterations import is_overflow_block
-from chia.types.blockchain_format.classgroup import ClassgroupElement
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.blockchain_format.slots import ChallengeBlockInfo
-from chia.types.blockchain_format.sub_epoch_summary import SubEpochSummary
-from chia.types.full_block import FullBlock
-from chia.types.header_block import HeaderBlock
-from chia.util.errors import Err
-from chia.util.ints import uint8, uint32, uint64
+from hydrangea.consensus.block_record import BlockRecord
+from hydrangea.consensus.blockchain_interface import BlockchainInterface
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.consensus.deficit import calculate_deficit
+from hydrangea.consensus.difficulty_adjustment import get_next_sub_slot_iters_and_difficulty
+from hydrangea.consensus.make_sub_epoch_summary import make_sub_epoch_summary
+from hydrangea.consensus.pot_iterations import is_overflow_block
+from hydrangea.types.blockchain_format.classgroup import ClassgroupElement
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.blockchain_format.slots import ChallengeBlockInfo
+from hydrangea.types.blockchain_format.sub_epoch_summary import SubEpochSummary
+from hydrangea.types.full_block import FullBlock
+from hydrangea.types.header_block import HeaderBlock
+from hydrangea.util.errors import Err
+from hydrangea.util.ints import uint8, uint32, uint64
 
 
 def block_to_block_record(

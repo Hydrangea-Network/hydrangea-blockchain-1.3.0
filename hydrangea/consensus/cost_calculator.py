@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import List, Optional, Dict
 
-from chia.consensus.condition_costs import ConditionCost
-from chia.types.blockchain_format.program import SerializedProgram
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.name_puzzle_condition import NPC
-from chia.util.ints import uint64, uint16
-from chia.util.streamable import Streamable, streamable
-from chia.types.condition_with_args import ConditionWithArgs
+from hydrangea.consensus.condition_costs import ConditionCost
+from hydrangea.types.blockchain_format.program import SerializedProgram
+from hydrangea.types.condition_opcodes import ConditionOpcode
+from hydrangea.types.name_puzzle_condition import NPC
+from hydrangea.util.ints import uint64, uint16
+from hydrangea.util.streamable import Streamable, streamable
+from hydrangea.types.condition_with_args import ConditionWithArgs
 
 
 @dataclass(frozen=True)

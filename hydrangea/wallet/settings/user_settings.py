@@ -1,8 +1,8 @@
 from typing import Any, Dict
 
-from chia.wallet.key_val_store import KeyValStore
-from chia.wallet.settings.default_settings import default_settings
-from chia.wallet.settings.settings_objects import BackupInitialized
+from hydrangea.wallet.key_val_store import KeyValStore
+from hydrangea.wallet.settings.default_settings import default_settings
+from hydrangea.wallet.settings.settings_objects import BackupInitialized
 
 
 class UserSettings:

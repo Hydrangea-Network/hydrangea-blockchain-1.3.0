@@ -1,6 +1,6 @@
 from pathlib import Path
 import click
-from chia.cmds.db_upgrade_func import db_upgrade_func
+from hydrangea.cmds.db_upgrade_func import db_upgrade_func
 
 
 @click.group("db", short_help="Manage the blockchain database")
@@ -32,6 +32,6 @@ def db_upgrade_cmd(ctx: click.Context, no_update_config: bool, **kwargs) -> None
 
 
 if __name__ == "__main__":
-    from chia.util.default_root import DEFAULT_ROOT_PATH
+    from hydrangea.util.default_root import DEFAULT_ROOT_PATH
 
     db_upgrade_func(DEFAULT_ROOT_PATH)

@@ -80,29 +80,29 @@ network_overrides: &network_overrides
       NETWORK_TYPE: 1
   config:
     mainnet:
-      address_prefix: "xch"
+      address_prefix: "xhg"
       default_full_node_port: 8444
     testnet0:
-      address_prefix: "txch"
+      address_prefix: "txhg"
       default_full_node_port: 58444
     testnet1:
-      address_prefix: "txch"
+      address_prefix: "txhg"
     testnet2:
-      address_prefix: "txch"
+      address_prefix: "txhg"
     testnet3:
-      address_prefix: "txch"
+      address_prefix: "txhg"
     testnet4:
-      address_prefix: "txch"
+      address_prefix: "txhg"
     testnet7:
-      address_prefix: "txch"
+      address_prefix: "txhg"
       default_full_node_port: 58444
     testnet10:
-      address_prefix: "txch"
+      address_prefix: "txhg"
       default_full_node_port: 58444
 
 selected_network: &selected_network "mainnet"
-ALERTS_URL: https://download.chia.net/notify/mainnet_alert.txt
-CHIA_ALERTS_PUBKEY: 89b7fd87cb56e926ecefb879a29aae308be01f31980569f6a75a69d2a9a69daefd71fb778d865f7c50d6c967e3025937
+ALERTS_URL: https://download.hydrangea.website/notify/mainnet_alert.txt
+HYDRANGEA_ALERTS_PUBKEY: 89b7fd87cb56e926ecefb879a29aae308be01f31980569f6a75a69d2a9a69daefd71fb778d865f7c50d6c967e3025937
 
 # public ssl ca is included in source code
 # Private ssl ca is used for trusted connections between machines user owns
@@ -110,9 +110,9 @@ private_ssl_ca:
   crt: "config/ssl/ca/private_ca.crt"
   key: "config/ssl/ca/private_ca.key"
 
-chia_ssl_ca:
-  crt: "config/ssl/ca/chia_ca.crt"
-  key: "config/ssl/ca/chia_ca.key"
+hydrangea_ssl_ca:
+  crt: "config/ssl/ca/hydrangea_ca.crt"
+  key: "config/ssl/ca/hydrangea_ca.key"
 
 
 daemon_ssl:
@@ -135,11 +135,11 @@ seeder:
   port: 8444
   # Most full nodes on the network run on this port. (i.e. 8444 for mainnet, 58444 for testnet).
   other_peers_port: 8444
-  # Path to crawler DB. If empty, will use $CHIA_ROOT/crawler.db
+  # Path to crawler DB. If empty, will use $HYDRANGEA_ROOT/crawler.db
   crawler_db_path: ""
   # Peers used for the initial run.
   bootstrap_peers:
-    - "node.chia.net"
+    - "node.http://hydrangea.website/"
   # Only consider nodes synced at least to this height.
   minimum_height: 240000
   # How many of a particular version we need to see before reporting it in the logs
@@ -194,13 +194,13 @@ harvester:
     crt: "config/ssl/ca/private_ca.crt"
     key: "config/ssl/ca/private_ca.key"
 
-  chia_ssl_ca:
-    crt: "config/ssl/ca/chia_ca.crt"
-    key: "config/ssl/ca/chia_ca.key"
+  hydrangea_ssl_ca:
+    crt: "config/ssl/ca/hydrangea_ca.crt"
+    key: "config/ssl/ca/hydrangea_ca.key"
 
 pool:
   # Replace this with a real puzzle hash
-  # xch_target_address: txch102gkhhzs60grx7cfnpng5n6rjecr89r86l5s8xux2za8k820cxsq64ssdg
+  # xhg_target_address: txhg102gkhhzs60grx7cfnpng5n6rjecr89r86l5s8xux2za8k820cxsq64ssdg
   logging: *logging
   network_overrides: *network_overrides
   selected_network: *selected_network
@@ -220,7 +220,7 @@ farmer:
   pool_public_keys: []
 
   # Replace this with a real puzzle hash
-  # xch_target_address: txch102gkhhzs60grx7cfnpng5n6rjecr89r86l5s8xux2za8k820cxsq64ssdg
+  # xhg_target_address: txhg102gkhhzs60grx7cfnpng5n6rjecr89r86l5s8xux2za8k820cxsq64ssdg
 
   # If True, starts an RPC server at the following port
   start_rpc_server: True
@@ -374,7 +374,7 @@ full_node:
   weight_proof_timeout: 360
 
   # when enabled, the full node will print a pstats profile to the root_dir/profile every second
-  # analyze with chia/utils/profiler.py
+  # analyze with hydrangea/utils/profiler.py
   enable_profiler: False
 
   # this is a debug and profiling facility that logs all SQLite commands to a
@@ -384,7 +384,7 @@ full_node:
   # List of trusted DNS seeders to bootstrap from.
   # If you modify this, please change the hardcode as well from FullNode.set_server()
   dns_servers:
-    - "dns-introducer.chia.net"
+    - "dns-introducer.http://hydrangea.website/"
   farmer_peer:
       host: *self_hostname
       port: 8447
@@ -392,7 +392,7 @@ full_node:
       host: *self_hostname
       port: 8446
   introducer_peer:
-      host: introducer.chia.net  # Chia AWS introducer IPv4/IPv6
+      host: introducer.http://hydrangea.website/  # Hydrangea AWS introducer IPv4/IPv6
       port: 8444
   wallet_peer:
     host: *self_hostname
@@ -463,7 +463,7 @@ wallet:
   initial_num_public_keys_new_wallet: 5
 
   dns_servers:
-    - "dns-introducer.chia.net"
+    - "dns-introducer.http://hydrangea.website/"
 
   full_node_peer:
     host: *self_hostname
@@ -490,7 +490,7 @@ wallet:
   recent_peer_threshold: 6000
 
   introducer_peer:
-    host: introducer.chia.net # Chia AWS introducer IPv4/IPv6
+    host: introducer.http://hydrangea.website/ # Hydrangea AWS introducer IPv4/IPv6
     port: 8444
 
   ssl:

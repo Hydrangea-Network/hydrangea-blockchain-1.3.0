@@ -1,5 +1,5 @@
 import click
-from chia.util.keychain import supports_keyring_passphrase
+from hydrangea.util.keychain import supports_keyring_passphrase
 
 
 @click.command("init", short_help="Create or migrate the configuration")
@@ -15,7 +15,7 @@ from chia.util.keychain import supports_keyring_passphrase
     is_flag=True,
     help="Attempt to fix SSL certificate/key file permissions",
 )
-@click.option("--testnet", is_flag=True, help="Configure this chia install to connect to the testnet")
+@click.option("--testnet", is_flag=True, help="Configure this hydrangea install to connect to the testnet")
 @click.option("--set-passphrase", "-s", is_flag=True, help="Protect your keyring with a passphrase")
 @click.option("--experimental-v2-db", is_flag=True, help="Initialize the blockchain database in experimental v2 format")
 @click.pass_context
@@ -27,16 +27,16 @@ def init_cmd(
 
     \b
     Follow these steps to create new certificates for a remote harvester:
-    - Make a copy of your Farming Machine CA directory: ~/.chia/[version]/config/ssl/ca
-    - Shut down all chia daemon processes with `chia stop all -d`
-    - Run `chia init -c [directory]` on your remote harvester,
+    - Make a copy of your Farming Machine CA directory: ~/.hydrangea/[version]/config/ssl/ca
+    - Shut down all hydrangea daemon processes with `hydrangea stop all -d`
+    - Run `hydrangea init -c [directory]` on your remote harvester,
       where [directory] is the the copy of your Farming Machine CA directory
-    - Get more details on remote harvester on Chia wiki:
-      https://github.com/Chia-Network/chia-blockchain/wiki/Farming-on-many-machines
+    - Get more details on remote harvester on Hydrangea wiki:
+      https://github.com/HydrangeaBlockchain/hydrangea-blockchain/wiki/Farming-on-many-machines
     """
     from pathlib import Path
     from .init_funcs import init
-    from chia.cmds.passphrase_funcs import initialize_passphrase
+    from hydrangea.cmds.passphrase_funcs import initialize_passphrase
 
     set_passphrase = kwargs.get("set_passphrase")
     if set_passphrase:
@@ -52,14 +52,14 @@ def init_cmd(
 
 
 if not supports_keyring_passphrase():
-    from chia.cmds.passphrase_funcs import remove_passphrase_options_from_cmd
+    from hydrangea.cmds.passphrase_funcs import remove_passphrase_options_from_cmd
 
     # TODO: Remove once keyring passphrase management is rolled out to all platforms
     remove_passphrase_options_from_cmd(init_cmd)
 
 
 if __name__ == "__main__":
-    from .init_funcs import chia_init
-    from chia.util.default_root import DEFAULT_ROOT_PATH
+    from .init_funcs import hydrangea_init
+    from hydrangea.util.default_root import DEFAULT_ROOT_PATH
 
-    chia_init(DEFAULT_ROOT_PATH)
+    hydrangea_init(DEFAULT_ROOT_PATH)

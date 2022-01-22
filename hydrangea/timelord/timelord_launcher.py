@@ -8,11 +8,11 @@ from typing import Dict, List, Optional
 
 import pkg_resources
 
-from chia.util.chia_logging import initialize_logging
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.network import get_host_addr
-from chia.util.setproctitle import setproctitle
+from hydrangea.util.hydrangea_logging import initialize_logging
+from hydrangea.util.config import load_config
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
+from hydrangea.util.network import get_host_addr
+from hydrangea.util.setproctitle import setproctitle
 
 active_processes: List = []
 stopped = False
@@ -95,7 +95,7 @@ def main():
         log.info("Timelord launcher not supported on Windows.")
         return
     root_path = DEFAULT_ROOT_PATH
-    setproctitle("chia_timelord_launcher")
+    setproctitle("hydrangea_timelord_launcher")
     net_config = load_config(root_path, "config.yaml")
     config = net_config["timelord_launcher"]
     initialize_logging("TLauncher", config["logging"], root_path)

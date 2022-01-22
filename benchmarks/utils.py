@@ -1,9 +1,9 @@
-from chia.consensus.default_constants import DEFAULT_CONSTANTS
-from chia.util.ints import uint64, uint32
-from chia.consensus.coinbase import create_farmer_coin, create_pool_coin
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.db_wrapper import DBWrapper
+from hydrangea.consensus.default_constants import DEFAULT_CONSTANTS
+from hydrangea.util.ints import uint64, uint32
+from hydrangea.consensus.coinbase import create_farmer_coin, create_pool_coin
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.db_wrapper import DBWrapper
 from typing import Tuple
 from pathlib import Path
 from datetime import datetime

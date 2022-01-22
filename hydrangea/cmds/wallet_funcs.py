@@ -8,29 +8,29 @@ from typing import Callable, List, Optional, Tuple, Dict
 
 import aiohttp
 
-from chia.cmds.units import units
-from chia.rpc.wallet_rpc_client import WalletRpcClient
-from chia.server.start_wallet import SERVICE_NAME
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.bech32m import encode_puzzle_hash
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.ints import uint16, uint32, uint64
-from chia.wallet.trading.offer import Offer
-from chia.wallet.trading.trade_status import TradeStatus
-from chia.wallet.transaction_record import TransactionRecord
-from chia.wallet.util.wallet_types import WalletType
+from hydrangea.cmds.units import units
+from hydrangea.rpc.wallet_rpc_client import WalletRpcClient
+from hydrangea.server.start_wallet import SERVICE_NAME
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.bech32m import encode_puzzle_hash
+from hydrangea.util.config import load_config
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
+from hydrangea.util.ints import uint16, uint32, uint64
+from hydrangea.wallet.trading.offer import Offer
+from hydrangea.wallet.trading.trade_status import TradeStatus
+from hydrangea.wallet.transaction_record import TransactionRecord
+from hydrangea.wallet.util.wallet_types import WalletType
 
 
 def print_transaction(tx: TransactionRecord, verbose: bool, name) -> None:
     if verbose:
         print(tx)
     else:
-        chia_amount = Decimal(int(tx.amount)) / units["chia"]
+        hydrangea_amount = Decimal(int(tx.amount)) / units["hydrangea"]
         to_address = encode_puzzle_hash(tx.to_puzzle_hash, name)
         print(f"Transaction {tx.name}")
         print(f"Status: {'Confirmed' if tx.confirmed else ('In mempool' if tx.is_in_mempool() else 'Pending')}")
-        print(f"Amount {'sent' if tx.sent else 'received'}: {chia_amount} {name}")
+        print(f"Amount {'sent' if tx.sent else 'received'}: {hydrangea_amount} {name}")
         print(f"To address: {to_address}")
         print("Created at:", datetime.fromtimestamp(tx.created_at_time).strftime("%Y-%m-%d %H:%M:%S"))
         print("")
@@ -92,8 +92,8 @@ async def send(args: dict, wallet_client: WalletRpcClient, fingerprint: int) -> 
         )
         return
     print("Submitting transaction...")
-    final_amount = uint64(int(amount * units["chia"]))
-    final_fee = uint64(int(fee * units["chia"]))
+    final_amount = uint64(int(amount * units["hydrangea"]))
+    final_fee = uint64(int(fee * units["hydrangea"]))
     res = await wallet_client.send_transaction(wallet_id, final_amount, address, final_fee)
     tx_id = res.name
     start = time.time()
@@ -102,11 +102,11 @@ async def send(args: dict, wallet_client: WalletRpcClient, fingerprint: int) -> 
         tx = await wallet_client.get_transaction(wallet_id, tx_id)
         if len(tx.sent_to) > 0:
             print(f"Transaction submitted to nodes: {tx.sent_to}")
-            print(f"Do chia wallet get_transaction -f {fingerprint} -tx 0x{tx_id} to get status")
+            print(f"Do hydrangea wallet get_transaction -f {fingerprint} -tx 0x{tx_id} to get status")
             return None
 
     print("Transaction not yet submitted to nodes")
-    print(f"Do 'chia wallet get_transaction -f {fingerprint} -tx 0x{tx_id}' to get status")
+    print(f"Do 'hydrangea wallet get_transaction -f {fingerprint} -tx 0x{tx_id}' to get status")
 
 
 async def get_address(args: dict, wallet_client: WalletRpcClient, fingerprint: int) -> None:
@@ -147,7 +147,7 @@ async def make_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: in
     offers: List[str] = args["offers"]
     requests: List[str] = args["requests"]
     filepath: str = args["filepath"]
-    fee: int = int(Decimal(args["fee"]) * units["chia"])
+    fee: int = int(Decimal(args["fee"]) * units["hydrangea"])
 
     if [] in [offers, requests]:
         print("Not creating offer: Must be offering and requesting at least one asset")
@@ -157,8 +157,8 @@ async def make_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: in
         for item in [*offers, *requests]:
             wallet_id, amount = tuple(item.split(":")[0:2])
             if int(wallet_id) == 1:
-                name: str = "XCH"
-                unit: int = units["chia"]
+                name: str = "XHG"
+                unit: int = units["hydrangea"]
             else:
                 name = await wallet_client.get_cat_name(wallet_id)
                 unit = units["colouredcoin"]
@@ -193,7 +193,7 @@ async def make_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: in
                     with open(pathlib.Path(filepath), "w") as file:
                         file.write(offer.to_bech32())
                     print(f"Created offer with ID {trade_record.trade_id}")
-                    print(f"Use chia wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view status")
+                    print(f"Use hydrangea wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view status")
                 else:
                     print("Error creating offer")
 
@@ -204,10 +204,10 @@ def timestamp_to_time(timestamp):
 
 async def print_offer_summary(wallet_client: WalletRpcClient, sum_dict: dict):
     for asset_id, amount in sum_dict.items():
-        if asset_id == "xch":
+        if asset_id == "xhg":
             wid: str = "1"
-            name: str = "XCH"
-            unit: int = units["chia"]
+            name: str = "XHG"
+            unit: int = units["hydrangea"]
         else:
             result = await wallet_client.cat_asset_id_to_name(bytes32.from_hexstr(asset_id))
             wid = "Unknown"
@@ -237,7 +237,7 @@ async def print_trade_record(record, wallet_client: WalletRpcClient, summaries: 
         await print_offer_summary(wallet_client, requested)
         print("Pending Balances:")
         await print_offer_summary(wallet_client, offer.get_pending_amounts())
-        print(f"Fees: {Decimal(offer.bundle.fees()) / units['chia']}")
+        print(f"Fees: {Decimal(offer.bundle.fees()) / units['hydrangea']}")
     print("---------------")
 
 
@@ -268,7 +268,7 @@ async def take_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: in
         offer_hex = args["file"]
 
     examine_only: bool = args["examine_only"]
-    fee: int = int(Decimal(args["fee"]) * units["chia"])
+    fee: int = int(Decimal(args["fee"]) * units["hydrangea"])
 
     try:
         offer = Offer.from_bech32(offer_hex)
@@ -282,20 +282,20 @@ async def take_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: in
     await print_offer_summary(wallet_client, offered)
     print("  REQUESTED:")
     await print_offer_summary(wallet_client, requested)
-    print(f"Fees: {Decimal(offer.bundle.fees()) / units['chia']}")
+    print(f"Fees: {Decimal(offer.bundle.fees()) / units['hydrangea']}")
 
     if not examine_only:
         confirmation = input("Would you like to take this offer? (y/n): ")
         if confirmation in ["y", "yes"]:
             trade_record = await wallet_client.take_offer(offer, fee=fee)
             print(f"Accepted offer with ID {trade_record.trade_id}")
-            print(f"Use chia wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view its status")
+            print(f"Use hydrangea wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view its status")
 
 
 async def cancel_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: int) -> None:
     id = bytes32.from_hexstr(args["id"])
     secure: bool = not args["insecure"]
-    fee: int = int(Decimal(args["fee"]) * units["chia"])
+    fee: int = int(Decimal(args["fee"]) * units["hydrangea"])
 
     trade_record = await wallet_client.get_offer(id, file_contents=True)
     await print_trade_record(trade_record, wallet_client, summaries=True)
@@ -305,14 +305,14 @@ async def cancel_offer(args: dict, wallet_client: WalletRpcClient, fingerprint: 
         await wallet_client.cancel_offer(id, secure=secure, fee=fee)
         print(f"Cancelled offer with ID {trade_record.trade_id}")
         if secure:
-            print(f"Use chia wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view cancel status")
+            print(f"Use hydrangea wallet get_offers --id {trade_record.trade_id} -f {fingerprint} to view cancel status")
 
 
 def wallet_coin_unit(typ: WalletType, address_prefix: str) -> Tuple[str, int]:
     if typ == WalletType.CAT:
         return "", units["colouredcoin"]
     if typ in [WalletType.STANDARD_WALLET, WalletType.POOLING_WALLET, WalletType.MULTI_SIG, WalletType.RATE_LIMITED]:
-        return address_prefix, units["chia"]
+        return address_prefix, units["hydrangea"]
     return "", units["mojo"]
 
 
@@ -350,7 +350,7 @@ async def get_wallet(wallet_client: WalletRpcClient, fingerprint: int = None) ->
     else:
         fingerprints = await wallet_client.get_public_keys()
     if len(fingerprints) == 0:
-        print("No keys loaded. Run 'chia keys generate' or import a key")
+        print("No keys loaded. Run 'hydrangea keys generate' or import a key")
         return None
     if len(fingerprints) == 1:
         fingerprint = fingerprints[0]
@@ -383,7 +383,7 @@ async def get_wallet(wallet_client: WalletRpcClient, fingerprint: int = None) ->
             use_cloud = True
             if "backup_path" in log_in_response:
                 path = log_in_response["backup_path"]
-                print(f"Backup file from backup.chia.net downloaded and written to: {path}")
+                print(f"Backup file from backup.http://hydrangea.website/ downloaded and written to: {path}")
                 val = input("Do you want to use this file to restore from backup? (Y/N) ")
                 if val.lower() == "y":
                     log_in_response = await wallet_client.log_in_and_restore(fingerprint, path)
@@ -438,7 +438,7 @@ async def execute_with_wallet(
         if isinstance(e, aiohttp.ClientConnectorError):
             print(
                 f"Connection error. Check if the wallet is running at {wallet_rpc_port}. "
-                "You can run the wallet via:\n\tchia start wallet"
+                "You can run the wallet via:\n\thydrangea start wallet"
             )
         else:
             print(f"Exception from 'wallet' {e}")

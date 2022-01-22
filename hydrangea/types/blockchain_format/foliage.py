@@ -3,11 +3,11 @@ from typing import List, Optional
 
 from blspy import G2Element
 
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.pool_target import PoolTarget
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.ints import uint64
-from chia.util.streamable import Streamable, streamable
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.pool_target import PoolTarget
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.ints import uint64
+from hydrangea.util.streamable import Streamable, streamable
 
 
 @dataclass(frozen=True)

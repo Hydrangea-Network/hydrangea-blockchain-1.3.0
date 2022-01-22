@@ -6,12 +6,12 @@ from time import time
 import asyncio
 import zstd
 
-from chia.util.config import load_config, save_config
-from chia.util.path import mkdir, path_from_root
-from chia.full_node.block_store import BlockStore
-from chia.full_node.coin_store import CoinStore
-from chia.full_node.hint_store import HintStore
-from chia.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.config import load_config, save_config
+from hydrangea.util.path import mkdir, path_from_root
+from hydrangea.full_node.block_store import BlockStore
+from hydrangea.full_node.coin_store import CoinStore
+from hydrangea.full_node.hint_store import HintStore
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
 
 
 # if either the input database or output database file is specified, the
@@ -66,7 +66,7 @@ COIN_COMMIT_RATE = 30000
 
 async def convert_v1_to_v2(in_path: Path, out_path: Path) -> None:
     import aiosqlite
-    from chia.util.db_wrapper import DBWrapper
+    from hydrangea.util.db_wrapper import DBWrapper
 
     if out_path.exists():
         print(f"output file already exists. {out_path}")

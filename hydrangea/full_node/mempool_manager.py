@@ -8,32 +8,32 @@ from typing import Dict, List, Optional, Set, Tuple
 from blspy import GTElement
 from chiabip158 import PyBIP158
 
-from chia.util import cached_bls
-from chia.consensus.block_record import BlockRecord
-from chia.consensus.constants import ConsensusConstants
-from chia.consensus.cost_calculator import NPCResult, calculate_cost_of_program
-from chia.full_node.bundle_tools import simple_solution_generator
-from chia.full_node.coin_store import CoinStore
-from chia.full_node.mempool import Mempool
-from chia.full_node.mempool_check_conditions import mempool_check_conditions_dict, get_name_puzzle_conditions
-from chia.full_node.pending_tx_cache import PendingTxCache
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import SerializedProgram
-from chia.types.blockchain_format.sized_bytes import bytes32, bytes48
-from chia.types.coin_record import CoinRecord
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.condition_with_args import ConditionWithArgs
-from chia.types.mempool_inclusion_status import MempoolInclusionStatus
-from chia.types.mempool_item import MempoolItem
-from chia.types.spend_bundle import SpendBundle
-from chia.util.cached_bls import LOCAL_CACHE
-from chia.util.clvm import int_from_bytes
-from chia.util.condition_tools import pkm_pairs
-from chia.util.errors import Err, ValidationError
-from chia.util.generator_tools import additions_for_npc
-from chia.util.ints import uint32, uint64
-from chia.util.lru_cache import LRUCache
-from chia.util.streamable import recurse_jsonify
+from hydrangea.util import cached_bls
+from hydrangea.consensus.block_record import BlockRecord
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.consensus.cost_calculator import NPCResult, calculate_cost_of_program
+from hydrangea.full_node.bundle_tools import simple_solution_generator
+from hydrangea.full_node.coin_store import CoinStore
+from hydrangea.full_node.mempool import Mempool
+from hydrangea.full_node.mempool_check_conditions import mempool_check_conditions_dict, get_name_puzzle_conditions
+from hydrangea.full_node.pending_tx_cache import PendingTxCache
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.program import SerializedProgram
+from hydrangea.types.blockchain_format.sized_bytes import bytes32, bytes48
+from hydrangea.types.coin_record import CoinRecord
+from hydrangea.types.condition_opcodes import ConditionOpcode
+from hydrangea.types.condition_with_args import ConditionWithArgs
+from hydrangea.types.mempool_inclusion_status import MempoolInclusionStatus
+from hydrangea.types.mempool_item import MempoolItem
+from hydrangea.types.spend_bundle import SpendBundle
+from hydrangea.util.cached_bls import LOCAL_CACHE
+from hydrangea.util.clvm import int_from_bytes
+from hydrangea.util.condition_tools import pkm_pairs
+from hydrangea.util.errors import Err, ValidationError
+from hydrangea.util.generator_tools import additions_for_npc
+from hydrangea.util.ints import uint32, uint64
+from hydrangea.util.lru_cache import LRUCache
+from hydrangea.util.streamable import recurse_jsonify
 
 log = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class MempoolManager:
         self.lock = asyncio.Lock()
 
         # The fee per cost must be above this amount to consider the fee "nonzero", and thus able to kick out other
-        # transactions. This prevents spam. This is equivalent to 0.055 XCH per block, or about 0.00005 XCH for two
+        # transactions. This prevents spam. This is equivalent to 0.055 XHG per block, or about 0.00005 XHG for two
         # spends.
         self.nonzero_fee_minimum_fpc = 5
 
@@ -192,7 +192,7 @@ class MempoolManager:
 
     @staticmethod
     def get_min_fee_increase() -> int:
-        # 0.00001 XCH
+        # 0.00001 XHG
         return 10000000
 
     def can_replace(

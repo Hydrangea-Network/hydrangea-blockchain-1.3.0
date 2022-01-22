@@ -1,5 +1,5 @@
 import pytest
-from chia.util.network import get_host_addr
+from hydrangea.util.network import get_host_addr
 
 
 class TestNetwork:

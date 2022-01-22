@@ -2,11 +2,11 @@ from typing import List
 
 from clvm.casts import int_from_bytes
 
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import SerializedProgram
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.util.condition_tools import (
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.program import SerializedProgram
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.condition_opcodes import ConditionOpcode
+from hydrangea.util.condition_tools import (
     conditions_dict_for_solution,
     created_outputs_for_conditions_dict,
 )

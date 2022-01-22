@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 
-from chia.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
 import click
 
 
@@ -20,16 +20,16 @@ async def show_async(
 
     from time import localtime, struct_time
     from typing import List, Optional
-    from chia.consensus.block_record import BlockRecord
-    from chia.rpc.full_node_rpc_client import FullNodeRpcClient
-    from chia.server.outbound_message import NodeType
-    from chia.types.full_block import FullBlock
-    from chia.util.bech32m import encode_puzzle_hash
-    from chia.util.byte_types import hexstr_to_bytes
-    from chia.util.config import load_config
-    from chia.util.default_root import DEFAULT_ROOT_PATH
-    from chia.util.ints import uint16
-    from chia.util.misc import format_bytes
+    from hydrangea.consensus.block_record import BlockRecord
+    from hydrangea.rpc.full_node_rpc_client import FullNodeRpcClient
+    from hydrangea.server.outbound_message import NodeType
+    from hydrangea.types.full_block import FullBlock
+    from hydrangea.util.bech32m import encode_puzzle_hash
+    from hydrangea.util.byte_types import hexstr_to_bytes
+    from hydrangea.util.config import load_config
+    from hydrangea.util.default_root import DEFAULT_ROOT_PATH
+    from hydrangea.util.ints import uint16
+    from hydrangea.util.misc import format_bytes
 
     try:
         config = load_config(DEFAULT_ROOT_PATH, "config.yaml")
@@ -70,7 +70,7 @@ async def show_async(
                 print(f"Current Blockchain Status: Not Synced. Peak height: {peak.height}")
             else:
                 print("\nSearching for an initial chain\n")
-                print("You may be able to expedite with 'chia show -a host:port' using a known node.\n")
+                print("You may be able to expedite with 'hydrangea show -a host:port' using a known node.\n")
 
             if peak is not None:
                 if peak.is_transaction_block:

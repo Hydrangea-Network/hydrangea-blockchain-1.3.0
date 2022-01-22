@@ -3,12 +3,12 @@ from pathlib import Path
 
 import aiosqlite
 
-from chia.consensus.blockchain import Blockchain
-from chia.consensus.constants import ConsensusConstants
-from chia.full_node.block_store import BlockStore
-from chia.full_node.coin_store import CoinStore
-from chia.full_node.hint_store import HintStore
-from chia.util.db_wrapper import DBWrapper
+from hydrangea.consensus.blockchain import Blockchain
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.full_node.block_store import BlockStore
+from hydrangea.full_node.coin_store import CoinStore
+from hydrangea.full_node.hint_store import HintStore
+from hydrangea.util.db_wrapper import DBWrapper
 
 
 async def create_ram_blockchain(consensus_constants: ConsensusConstants) -> Tuple[aiosqlite.Connection, Blockchain]:

@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple, Union, Dict
 
-from chia.consensus.constants import ConsensusConstants
-from chia.protocols.wallet_protocol import (
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.protocols.wallet_protocol import (
     RequestAdditions,
     RespondAdditions,
     RejectAdditionsRequest,
@@ -9,10 +9,10 @@ from chia.protocols.wallet_protocol import (
     RespondRemovals,
     RequestRemovals,
 )
-from chia.types.blockchain_format.coin import hash_coin_list, Coin
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.full_block import FullBlock
-from chia.util.merkle_set import confirm_not_included_already_hashed, confirm_included_already_hashed, MerkleSet
+from hydrangea.types.blockchain_format.coin import hash_coin_list, Coin
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.full_block import FullBlock
+from hydrangea.util.merkle_set import confirm_not_included_already_hashed, confirm_included_already_hashed, MerkleSet
 
 
 def validate_additions(

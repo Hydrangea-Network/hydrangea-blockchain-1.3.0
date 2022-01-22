@@ -7,13 +7,13 @@ from clvm.casts import int_from_bytes
 from clvm.EvalError import EvalError
 from clvm.operators import OPERATOR_LOOKUP
 from clvm.serialize import sexp_from_stream, sexp_to_stream
-from clvm_rs import STRICT_MODE as MEMPOOL_MODE, run_chia_program, serialized_length, run_generator2
+from clvm_rs import STRICT_MODE as MEMPOOL_MODE, run_hydrangea_program, serialized_length, run_generator2
 from clvm_tools.curry import curry, uncurry
 
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.hash import std_hash
-from chia.util.ints import uint16
-from chia.util.byte_types import hexstr_to_bytes
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.hash import std_hash
+from hydrangea.util.ints import uint16
+from hydrangea.util.byte_types import hexstr_to_bytes
 
 from .tree_hash import sha256_treehash
 
@@ -279,7 +279,7 @@ class SerializedProgram:
         else:
             serialized_args += _serialize(args[0])
 
-        cost, ret = run_chia_program(
+        cost, ret = run_hydrangea_program(
             self._buf,
             serialized_args,
             max_cost,

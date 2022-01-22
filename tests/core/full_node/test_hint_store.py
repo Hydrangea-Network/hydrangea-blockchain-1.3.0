@@ -3,12 +3,12 @@ import logging
 import pytest
 from clvm.casts import int_to_bytes
 
-from chia.consensus.blockchain import Blockchain
-from chia.full_node.hint_store import HintStore
-from chia.types.blockchain_format.coin import Coin
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.condition_with_args import ConditionWithArgs
-from chia.types.spend_bundle import SpendBundle
+from hydrangea.consensus.blockchain import Blockchain
+from hydrangea.full_node.hint_store import HintStore
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.condition_opcodes import ConditionOpcode
+from hydrangea.types.condition_with_args import ConditionWithArgs
+from hydrangea.types.spend_bundle import SpendBundle
 from tests.blockchain.blockchain_test_utils import _validate_and_add_block, _validate_and_add_block_no_error
 from tests.util.db_connection import DBConnection
 from tests.wallet_tools import WalletTool

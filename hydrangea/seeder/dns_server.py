@@ -9,10 +9,10 @@ from typing import Any, List
 import aiosqlite
 from dnslib import A, AAAA, SOA, NS, MX, CNAME, RR, DNSRecord, QTYPE, DNSHeader
 
-from chia.util.chia_logging import initialize_logging
-from chia.util.path import mkdir, path_from_root
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
+from hydrangea.util.hydrangea_logging import initialize_logging
+from hydrangea.util.path import mkdir, path_from_root
+from hydrangea.util.config import load_config
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
 
 SERVICE_NAME = "seeder"
 log = logging.getLogger(__name__)

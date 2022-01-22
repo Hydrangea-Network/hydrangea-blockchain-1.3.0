@@ -1,6 +1,6 @@
 from typing import Optional, List
 
-from chia.util.condition_tools import ConditionOpcode
+from hydrangea.util.condition_tools import ConditionOpcode
 
 
 def make_create_coin_condition(puzzle_hash, amount, memos: Optional[List[bytes]]) -> List:

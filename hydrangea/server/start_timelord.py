@@ -2,15 +2,15 @@ import logging
 import pathlib
 from typing import Dict
 
-from chia.consensus.constants import ConsensusConstants
-from chia.consensus.default_constants import DEFAULT_CONSTANTS
-from chia.server.outbound_message import NodeType
-from chia.server.start_service import run_service
-from chia.timelord.timelord import Timelord
-from chia.timelord.timelord_api import TimelordAPI
-from chia.types.peer_info import PeerInfo
-from chia.util.config import load_config_cli
-from chia.util.default_root import DEFAULT_ROOT_PATH
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.consensus.default_constants import DEFAULT_CONSTANTS
+from hydrangea.server.outbound_message import NodeType
+from hydrangea.server.start_service import run_service
+from hydrangea.timelord.timelord import Timelord
+from hydrangea.timelord.timelord_api import TimelordAPI
+from hydrangea.types.peer_info import PeerInfo
+from hydrangea.util.config import load_config_cli
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
 
 # See: https://bugs.python.org/issue29288
 "".encode("idna")

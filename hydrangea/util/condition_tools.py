@@ -1,15 +1,15 @@
 from typing import Dict, List, Optional, Tuple, Set
 
-from chia.types.announcement import Announcement
-from chia.types.name_puzzle_condition import NPC
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import Program, SerializedProgram
-from chia.types.blockchain_format.sized_bytes import bytes32, bytes48
-from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.condition_with_args import ConditionWithArgs
-from chia.util.clvm import int_from_bytes
-from chia.util.errors import ConsensusError, Err
-from chia.util.ints import uint64
+from hydrangea.types.announcement import Announcement
+from hydrangea.types.name_puzzle_condition import NPC
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.program import Program, SerializedProgram
+from hydrangea.types.blockchain_format.sized_bytes import bytes32, bytes48
+from hydrangea.types.condition_opcodes import ConditionOpcode
+from hydrangea.types.condition_with_args import ConditionWithArgs
+from hydrangea.util.clvm import int_from_bytes
+from hydrangea.util.errors import ConsensusError, Err
+from hydrangea.util.ints import uint64
 
 # TODO: review each `assert` and consider replacing with explicit checks
 #       since asserts can be stripped with python `-OO` flag
@@ -19,7 +19,7 @@ def parse_sexp_to_condition(
     sexp: Program,
 ) -> Tuple[Optional[Err], Optional[ConditionWithArgs]]:
     """
-    Takes a ChiaLisp sexp and returns a ConditionWithArgs.
+    Takes a Chialisp sexp and returns a ConditionWithArgs.
     If it fails, returns an Error
     """
     as_atoms = sexp.as_atom_list()
@@ -34,7 +34,7 @@ def parse_sexp_to_conditions(
     sexp: Program,
 ) -> Tuple[Optional[Err], Optional[List[ConditionWithArgs]]]:
     """
-    Takes a ChiaLisp sexp (list) and returns the list of ConditionWithArgss
+    Takes a Chialisp sexp (list) and returns the list of ConditionWithArgss
     If it fails, returns as Error
     """
     results: List[ConditionWithArgs] = []

@@ -1,5 +1,5 @@
 import click
-from chia.plotters.plotters import call_plotters
+from hydrangea.plotters.plotters import call_plotters
 
 
 @click.command(

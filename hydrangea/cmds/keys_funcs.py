@@ -2,13 +2,13 @@ from typing import List
 
 from blspy import AugSchemeMPL, G1Element, G2Element
 
-from chia.consensus.coinbase import create_puzzlehash_for_pk
-from chia.util.bech32m import encode_puzzle_hash
-from chia.util.config import load_config
-from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.ints import uint32
-from chia.util.keychain import Keychain, bytes_to_mnemonic, generate_mnemonic, unlocks_keyring
-from chia.wallet.derive_keys import master_sk_to_farmer_sk, master_sk_to_pool_sk, master_sk_to_wallet_sk
+from hydrangea.consensus.coinbase import create_puzzlehash_for_pk
+from hydrangea.util.bech32m import encode_puzzle_hash
+from hydrangea.util.config import load_config
+from hydrangea.util.default_root import DEFAULT_ROOT_PATH
+from hydrangea.util.ints import uint32
+from hydrangea.util.keychain import Keychain, bytes_to_mnemonic, generate_mnemonic, unlocks_keyring
+from hydrangea.wallet.derive_keys import master_sk_to_farmer_sk, master_sk_to_pool_sk, master_sk_to_wallet_sk
 
 keychain: Keychain = Keychain()
 
@@ -21,7 +21,7 @@ def generate_and_print():
     mnemonic = generate_mnemonic()
     print("Generating private key. Mnemonic (24 secret words):")
     print(mnemonic)
-    print("Note that this key has not been added to the keychain. Run chia keys add")
+    print("Note that this key has not been added to the keychain. Run hydrangea keys add")
     return mnemonic
 
 

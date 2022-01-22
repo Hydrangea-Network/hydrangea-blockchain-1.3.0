@@ -6,11 +6,11 @@ from bitstring import BitArray
 from blspy import G1Element, AugSchemeMPL, PrivateKey
 from chiapos import Verifier
 
-from chia.consensus.constants import ConsensusConstants
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.hash import std_hash
-from chia.util.ints import uint8
-from chia.util.streamable import Streamable, streamable
+from hydrangea.consensus.constants import ConsensusConstants
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.hash import std_hash
+from hydrangea.util.ints import uint8
+from hydrangea.util.streamable import Streamable, streamable
 
 log = logging.getLogger(__name__)
 

@@ -1,13 +1,13 @@
 import pytest
 import struct
-from chia.full_node.block_height_map import BlockHeightMap
-from chia.types.blockchain_format.sub_epoch_summary import SubEpochSummary
-from chia.util.db_wrapper import DBWrapper
+from hydrangea.full_node.block_height_map import BlockHeightMap
+from hydrangea.types.blockchain_format.sub_epoch_summary import SubEpochSummary
+from hydrangea.util.db_wrapper import DBWrapper
 
 from tests.util.db_connection import DBConnection
-from chia.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
 from typing import Optional
-from chia.util.ints import uint8
+from hydrangea.util.ints import uint8
 
 # from tests.conftest import tmp_dir
 

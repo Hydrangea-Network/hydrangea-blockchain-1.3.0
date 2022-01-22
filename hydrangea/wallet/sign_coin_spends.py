@@ -4,9 +4,9 @@ from typing import List, Any
 import blspy
 from blspy import AugSchemeMPL
 
-from chia.types.coin_spend import CoinSpend
-from chia.types.spend_bundle import SpendBundle
-from chia.util.condition_tools import conditions_dict_for_solution, pkm_pairs_for_conditions_dict
+from hydrangea.types.coin_spend import CoinSpend
+from hydrangea.types.spend_bundle import SpendBundle
+from hydrangea.util.condition_tools import conditions_dict_for_solution, pkm_pairs_for_conditions_dict
 
 
 async def sign_coin_spends(

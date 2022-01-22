@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List
 
-from chia.util.ints import uint8, uint32
-from chia.util.streamable import Streamable, streamable
+from hydrangea.util.ints import uint8, uint32
+from hydrangea.util.streamable import Streamable, streamable
 
 
 @dataclass(frozen=True)

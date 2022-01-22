@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.hash import std_hash
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.hash import std_hash
 
 
 @dataclass(frozen=True)

@@ -5,11 +5,11 @@ from typing import List, Optional, Set, Tuple
 import aiosqlite
 from blspy import G1Element
 
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.db_wrapper import DBWrapper
-from chia.util.ints import uint32
-from chia.wallet.derivation_record import DerivationRecord
-from chia.wallet.util.wallet_types import WalletType
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.db_wrapper import DBWrapper
+from hydrangea.util.ints import uint32
+from hydrangea.wallet.derivation_record import DerivationRecord
+from hydrangea.wallet.util.wallet_types import WalletType
 
 log = logging.getLogger(__name__)
 

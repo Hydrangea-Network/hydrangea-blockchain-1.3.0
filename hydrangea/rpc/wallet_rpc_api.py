@@ -5,37 +5,37 @@ from typing import Callable, Dict, List, Optional, Tuple, Set, Any
 
 from blspy import PrivateKey, G1Element
 
-from chia.consensus.block_rewards import calculate_base_farmer_reward
-from chia.pools.pool_wallet import PoolWallet
-from chia.pools.pool_wallet_info import create_pool_state, FARMING_TO_POOL, PoolWalletInfo, PoolState
-from chia.protocols.protocol_message_types import ProtocolMessageTypes
-from chia.server.outbound_message import NodeType, make_msg
-from chia.simulator.simulator_protocol import FarmNewBlockProtocol
-from chia.types.announcement import Announcement
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.spend_bundle import SpendBundle
-from chia.util.bech32m import decode_puzzle_hash, encode_puzzle_hash
-from chia.util.byte_types import hexstr_to_bytes
-from chia.util.ints import uint32, uint64
-from chia.util.keychain import KeyringIsLocked, bytes_to_mnemonic, generate_mnemonic
-from chia.util.path import path_from_root
-from chia.util.ws_message import WsRpcMessage, create_payload_dict
-from chia.wallet.cat_wallet.cat_constants import DEFAULT_CATS
-from chia.wallet.cat_wallet.cat_wallet import CATWallet
-from chia.wallet.derive_keys import master_sk_to_singleton_owner_sk, master_sk_to_wallet_sk_unhardened
-from chia.wallet.rl_wallet.rl_wallet import RLWallet
-from chia.wallet.derive_keys import master_sk_to_farmer_sk, master_sk_to_pool_sk, master_sk_to_wallet_sk
-from chia.wallet.did_wallet.did_wallet import DIDWallet
-from chia.wallet.trade_record import TradeRecord
-from chia.wallet.trading.offer import Offer
-from chia.wallet.transaction_record import TransactionRecord
-from chia.wallet.util.transaction_type import TransactionType
-from chia.wallet.util.wallet_types import AmountWithPuzzlehash, WalletType
-from chia.wallet.wallet_info import WalletInfo
-from chia.wallet.wallet_node import WalletNode
-from chia.util.config import load_config
-from chia.consensus.coinbase import create_puzzlehash_for_pk
+from hydrangea.consensus.block_rewards import calculate_base_farmer_reward
+from hydrangea.pools.pool_wallet import PoolWallet
+from hydrangea.pools.pool_wallet_info import create_pool_state, FARMING_TO_POOL, PoolWalletInfo, PoolState
+from hydrangea.protocols.protocol_message_types import ProtocolMessageTypes
+from hydrangea.server.outbound_message import NodeType, make_msg
+from hydrangea.simulator.simulator_protocol import FarmNewBlockProtocol
+from hydrangea.types.announcement import Announcement
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.types.spend_bundle import SpendBundle
+from hydrangea.util.bech32m import decode_puzzle_hash, encode_puzzle_hash
+from hydrangea.util.byte_types import hexstr_to_bytes
+from hydrangea.util.ints import uint32, uint64
+from hydrangea.util.keychain import KeyringIsLocked, bytes_to_mnemonic, generate_mnemonic
+from hydrangea.util.path import path_from_root
+from hydrangea.util.ws_message import WsRpcMessage, create_payload_dict
+from hydrangea.wallet.cat_wallet.cat_constants import DEFAULT_CATS
+from hydrangea.wallet.cat_wallet.cat_wallet import CATWallet
+from hydrangea.wallet.derive_keys import master_sk_to_singleton_owner_sk, master_sk_to_wallet_sk_unhardened
+from hydrangea.wallet.rl_wallet.rl_wallet import RLWallet
+from hydrangea.wallet.derive_keys import master_sk_to_farmer_sk, master_sk_to_pool_sk, master_sk_to_wallet_sk
+from hydrangea.wallet.did_wallet.did_wallet import DIDWallet
+from hydrangea.wallet.trade_record import TradeRecord
+from hydrangea.wallet.trading.offer import Offer
+from hydrangea.wallet.transaction_record import TransactionRecord
+from hydrangea.wallet.util.transaction_type import TransactionType
+from hydrangea.wallet.util.wallet_types import AmountWithPuzzlehash, WalletType
+from hydrangea.wallet.wallet_info import WalletInfo
+from hydrangea.wallet.wallet_node import WalletNode
+from hydrangea.util.config import load_config
+from hydrangea.consensus.coinbase import create_puzzlehash_for_pk
 
 # Timeout for response from wallet/full node for sending a transaction
 TIMEOUT = 30
@@ -47,7 +47,7 @@ class WalletRpcApi:
     def __init__(self, wallet_node: WalletNode):
         assert wallet_node is not None
         self.service = wallet_node
-        self.service_name = "chia_wallet"
+        self.service_name = "hydrangea_wallet"
         self.balance_cache: Dict[int, Any] = {}
 
     def get_routes(self) -> Dict[str, Callable]:
@@ -134,7 +134,7 @@ class WalletRpcApi:
             data["wallet_id"] = args[1]
         if args[2] is not None:
             data["additional_data"] = args[2]
-        return [create_payload_dict("state_changed", data, "chia_wallet", "wallet_ui")]
+        return [create_payload_dict("state_changed", data, "hydrangea_wallet", "wallet_ui")]
 
     async def _stop_wallet(self):
         """
@@ -275,8 +275,8 @@ class WalletRpcApi:
             return False, False
 
         config: Dict = load_config(new_root, "config.yaml")
-        farmer_target = config["farmer"].get("xch_target_address")
-        pool_target = config["pool"].get("xch_target_address")
+        farmer_target = config["farmer"].get("xhg_target_address")
+        pool_target = config["pool"].get("xhg_target_address")
         found_farmer = False
         found_pool = False
         selected = config["selected_network"]
@@ -522,7 +522,7 @@ class WalletRpcApi:
             if request["mode"] == "new":
                 owner_puzzle_hash: bytes32 = await self.service.wallet_state_manager.main_wallet.get_puzzle_hash(True)
 
-                from chia.pools.pool_wallet_info import initial_pool_state_from_dict
+                from hydrangea.pools.pool_wallet_info import initial_pool_state_from_dict
 
                 async with self.service.wallet_state_manager.lock:
                     last_wallet: Optional[

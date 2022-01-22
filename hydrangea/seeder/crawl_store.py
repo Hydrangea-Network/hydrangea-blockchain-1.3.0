@@ -8,7 +8,7 @@ from typing import List, Dict
 
 import aiosqlite
 
-from chia.seeder.peer_record import PeerRecord, PeerReliability
+from hydrangea.seeder.peer_record import PeerRecord, PeerReliability
 
 log = logging.getLogger(__name__)
 

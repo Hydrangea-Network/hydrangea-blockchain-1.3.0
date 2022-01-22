@@ -2,24 +2,24 @@ import logging
 import ssl
 
 from blspy import AugSchemeMPL, PrivateKey
-from chia.cmds.init_funcs import check_keys
-from chia.daemon.client import DaemonProxy
-from chia.daemon.keychain_server import (
+from hydrangea.cmds.init_funcs import check_keys
+from hydrangea.daemon.client import DaemonProxy
+from hydrangea.daemon.keychain_server import (
     KEYCHAIN_ERR_KEYERROR,
     KEYCHAIN_ERR_LOCKED,
     KEYCHAIN_ERR_MALFORMED_REQUEST,
     KEYCHAIN_ERR_NO_KEYS,
 )
-from chia.server.server import ssl_context_for_client
-from chia.util.config import load_config
-from chia.util.keychain import (
+from hydrangea.server.server import ssl_context_for_client
+from hydrangea.util.config import load_config
+from hydrangea.util.keychain import (
     Keychain,
     KeyringIsLocked,
     bytes_to_mnemonic,
     mnemonic_to_seed,
     supports_keyring_passphrase,
 )
-from chia.util.ws_message import WsRpcMessage
+from hydrangea.util.ws_message import WsRpcMessage
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 

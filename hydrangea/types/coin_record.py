@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from chia.protocols.wallet_protocol import CoinState
-from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.ints import uint32, uint64
-from chia.util.streamable import Streamable, streamable
+from hydrangea.protocols.wallet_protocol import CoinState
+from hydrangea.types.blockchain_format.coin import Coin
+from hydrangea.types.blockchain_format.sized_bytes import bytes32
+from hydrangea.util.ints import uint32, uint64
+from hydrangea.util.streamable import Streamable, streamable
 
 
 @dataclass(frozen=True)
