@@ -34,6 +34,7 @@ from hydrangea.util.ssl_check import (
     fix_ssl,
 )
 from hydrangea.wallet.derive_keys import master_sk_to_pool_sk, master_sk_to_wallet_sk
+from hydrangea.wallet.derive_chives_keys import master_sk_to_chives_pool_sk, master_sk_to_chives_wallet_sk
 from hydrangea.cmds.configure import configure
 
 private_node_names = {"full_node", "wallet", "farmer", "harvester", "timelord", "daemon"}
@@ -71,9 +72,11 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
 
     config: Dict = load_config(new_root, "config.yaml")
     pool_child_pubkeys = [master_sk_to_pool_sk(sk).get_g1() for sk, _ in all_sks]
+    pool_child_pubkeys = pool_child_pubkeys + [master_sk_to_chives_pool_sk(sk).get_g1() for sk, _ in all_sks]
     all_targets = []
     stop_searching_for_farmer = "xhg_target_address" not in config["farmer"]
     stop_searching_for_pool = "xhg_target_address" not in config["pool"]
+    stop_searching_for_timelord = "xhg_target_address" not in config["timelord"]
     number_of_ph_to_search = 500
     selected = config["selected_network"]
     prefix = config["network_overrides"]["config"][selected]["address_prefix"]
@@ -88,6 +91,17 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
                 stop_searching_for_farmer = True
             if all_targets[-1] == config["pool"].get("xhg_target_address"):
                 stop_searching_for_pool = True
+            if all_targets[-1] == config["timelord"].get("xhg_target_address"):
+                stop_searching_for_timelord = True
+            all_targets.append(
+                encode_puzzle_hash(create_puzzlehash_for_pk(master_sk_to_chives_wallet_sk(sk, uint32(i)).get_g1()), prefix)
+            )
+            if all_targets[-1] == config["farmer"].get("xhg_target_address"):
+                stop_searching_for_farmer = True
+            if all_targets[-1] == config["pool"].get("xhg_target_address"):
+                stop_searching_for_pool = True
+            if all_targets[-1] == config["timelord"].get("xhg_target_address"):
+                stop_searching_for_timelord = True
 
     # Set the destinations, if necessary
     updated_target: bool = False
@@ -116,6 +130,20 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
             f" keys for. We searched the first {number_of_ph_to_search} addresses. Consider overriding "
             f"{config['pool']['xhg_target_address']} with {all_targets[0]}"
         )
+
+    if "timelord" not in config:
+        config["timelord"] = {}
+    if "xhg_target_address" not in config["timelord"]:
+        print(f"Setting the xhg destination address for timelord reward to {all_targets[0]}")
+        config["timelord"]["xhg_target_address"] = all_targets[0]
+        updated_target = True
+    elif config["timelord"]["xhg_target_address"] not in all_targets:
+        print(
+            f"WARNING: using a timelord address which we don't have the private"
+            f" keys for. We searched the first {number_of_ph_to_search} addresses. Consider overriding "
+            f"{config['timelord']['xhg_target_address']} with {all_targets[0]}"
+        )
+
     if updated_target:
         print(
             f"To change the XHG destination addresses, edit the `xhg_target_address` entries in"

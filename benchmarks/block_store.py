@@ -143,6 +143,7 @@ async def run_add_block_benchmark(version: int):
                 pool_target,
                 rand_g2() if has_pool_pk else None,  # pool_signature
                 rand_hash(),  # farmer_reward_puzzle_hash
+                rand_hash(), # timelord_reward_puzzle_hash
                 bytes32([0] * 32),  # extension_data
             )
 

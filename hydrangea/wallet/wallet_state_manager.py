@@ -11,7 +11,7 @@ import aiosqlite
 from blspy import G1Element, PrivateKey
 from chiabip158 import PyBIP158
 
-from hydrangea.consensus.coinbase import pool_parent_id, farmer_parent_id
+from hydrangea.consensus.coinbase import pool_parent_id, farmer_parent_id, timelord_parent_id
 from hydrangea.consensus.constants import ConsensusConstants
 from hydrangea.pools.pool_puzzles import SINGLETON_LAUNCHER_HASH, solution_to_pool_state
 from hydrangea.pools.pool_wallet import PoolWallet
@@ -906,6 +906,15 @@ class WalletStateManager:
             calculated = farmer_parent_id(try_height, self.constants.GENESIS_CHALLENGE)
             if calculated == parent_id:
                 return True
+
+    def is_timelord_reward(self, created_height, parent_id):
+        for i in range(0, 30):
+            try_height = created_height - i
+            if try_height < 0:
+                break
+            calculated = timelord_parent_id(try_height, self.constants.GENESIS_CHALLENGE)
+            if calculated == parent_id:
+                return True
         return False
 
     async def get_wallet_id_for_puzzle_hash(self, puzzle_hash) -> Optional[Tuple[uint32, WalletType]]:
@@ -937,8 +946,11 @@ class WalletStateManager:
             return None
 
         self.log.info(f"Adding coin: {coin} at {height} wallet_id:{wallet_id}")
+        timelord_reward=False
         farmer_reward = False
         pool_reward = False
+        if self.is_timelord_reward(height, coin.parent_coin_info):
+            timelord_reward = True
         if self.is_farmer_reward(height, coin.parent_coin_info):
             farmer_reward = True
         elif self.is_pool_reward(height, coin.parent_coin_info):

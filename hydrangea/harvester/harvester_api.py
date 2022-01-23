@@ -19,6 +19,7 @@ from hydrangea.types.blockchain_format.sized_bytes import bytes32
 from hydrangea.util.api_decorators import api_request, peer_required
 from hydrangea.util.ints import uint8, uint32, uint64
 from hydrangea.wallet.derive_keys import master_sk_to_local_sk
+from hydrangea.wallet.derive_chives_keys import master_sk_to_chives_local_sk
 
 
 class HarvesterAPI:
@@ -127,6 +128,20 @@ class HarvesterAPI:
                                 )
                                 continue
 
+                            # Look up local_sk from plot to save locked memory
+                            # (
+                            #     pool_public_key_or_puzzle_hash,
+                            #     farmer_public_key,
+                            #     local_master_sk,
+                            # ) = parse_plot_info(plot_info.prover.get_memo())
+                            # if plot_info.prover.get_size()<32:
+                            #     local_sk = master_sk_to_chives_local_sk(local_master_sk)
+                            # else:
+                            #     local_sk = master_sk_to_local_sk(local_master_sk)
+                            # include_taproot = plot_info.pool_contract_puzzle_hash is not None
+                            # plot_public_key = ProofOfSpace.generate_plot_public_key(
+                            #     local_sk.get_g1(), farmer_public_key, include_taproot
+                            # )
                             responses.append(
                                 (
                                     quality_str,
@@ -134,6 +149,7 @@ class HarvesterAPI:
                                         sp_challenge_hash,
                                         plot_info.pool_public_key,
                                         plot_info.pool_contract_puzzle_hash,
+                                        # plot_public_key,
                                         plot_info.plot_public_key,
                                         uint8(plot_info.prover.get_size()),
                                         proof_xs,
@@ -245,7 +261,10 @@ class HarvesterAPI:
                 farmer_public_key,
                 local_master_sk,
             ) = parse_plot_info(plot_info.prover.get_memo())
-            local_sk = master_sk_to_local_sk(local_master_sk)
+            if plot_info.prover.get_size()<32:
+                local_sk = master_sk_to_chives_local_sk(local_master_sk)
+            else:
+                local_sk = master_sk_to_local_sk(local_master_sk)
 
         if isinstance(pool_public_key_or_puzzle_hash, G1Element):
             include_taproot = False
