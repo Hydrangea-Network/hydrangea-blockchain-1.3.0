@@ -70,28 +70,28 @@ jobs:
       with:
         node-version: '16.x'
 
-    - name: Test for secrets access
-      id: check_secrets
-      shell: bash
-      run: |
-        unset HAS_SIGNING_SECRET
-        unset HAS_AWS_SECRET
+    # - name: Test for secrets access
+    #   id: check_secrets
+    #   shell: bash
+    #   run: |
+    #     unset HAS_SIGNING_SECRET
+    #     unset HAS_AWS_SECRET
 
-        if [ -n "$SIGNING_SECRET" ]; then HAS_SIGNING_SECRET='true' ; fi
-        echo "::set-output name=HAS_SIGNING_SECRET::${HAS_SIGNING_SECRET}"
+    #     if [ -n "$SIGNING_SECRET" ]; then HAS_SIGNING_SECRET='true' ; fi
+    #     echo "::set-output name=HAS_SIGNING_SECRET::${HAS_SIGNING_SECRET}"
 
-        if [ -n "$AWS_SECRET" ]; then HAS_AWS_SECRET='true' ; fi
-        echo ::set-output name=HAS_AWS_SECRET::${HAS_AWS_SECRET}
-      env:
-        SIGNING_SECRET: "${{ secrets.WIN_CODE_SIGN_CERT }}"
-        AWS_SECRET: "${{ secrets.INSTALLER_UPLOAD_KEY }}"
+    #     if [ -n "$AWS_SECRET" ]; then HAS_AWS_SECRET='true' ; fi
+    #     echo ::set-output name=HAS_AWS_SECRET::${HAS_AWS_SECRET}
+    #   env:
+    #     SIGNING_SECRET: "${{ secrets.WIN_CODE_SIGN_CERT }}"
+    #     AWS_SECRET: "${{ secrets.INSTALLER_UPLOAD_KEY }}"
 
-    - name: Decode code signing cert into an encrypted file
-      if: steps.check_secrets.outputs.HAS_SIGNING_SECRET
-      uses: kitek/decode-base64-into-file-action@1.0
-      with:
-        encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
-        destination-file: .\hydrangea-blockchain-gui\win_code_sign_cert.p12
+    # - name: Decode code signing cert into an encrypted file
+    #   if: steps.check_secrets.outputs.HAS_SIGNING_SECRET
+    #   uses: kitek/decode-base64-into-file-action@1.0
+    #   with:
+    #     encoded-value: ${{ secrets.WIN_CODE_SIGN_CERT }}
+    #     destination-file: .\hydrangea-blockchain-gui\win_code_sign_cert.p12
 
     # Create our own venv outside of the git directory JUST for getting the ACTUAL version so that install can't break it
     - name: Get version number
@@ -153,90 +153,90 @@ jobs:
         $env:path="C:\Program` Files` (x86)\Windows` Kits\10\App` Certification` Kit;$env:path"
         .\build_scripts\build_windows.ps1
 
-    - name: Upload Windows exe's to artifacts
-      uses: actions/upload-artifact@v2.2.2
-      with:
-        name: Windows-Exe
-        path: ${{ github.workspace }}\hydrangea-blockchain-gui\Hydrangea-win32-x64\
+    # - name: Upload Windows exe's to artifacts
+    #  uses: actions/upload-artifact@v2.2.2
+    #  with:
+    #    name: Windows-Exe
+    #    path: ${{ github.workspace }}\hydrangea-blockchain-gui\Hydrangea-win32-x64\
 
     - name: Upload Installer to artifacts
       uses: actions/upload-artifact@v2.2.2
       with:
         name: Windows-Installers
-        path: ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\
+        path: ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe
 
-    - name: Install AWS CLI
-      if: steps.check_secrets.outputs.HAS_AWS_SECRET
-      run: |
-          msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
+    # - name: Install AWS CLI
+    #  if: steps.check_secrets.outputs.HAS_AWS_SECRET
+    #  run: |
+    #      msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi
 
-    - name: Configure AWS Credentials
-      if: steps.check_secrets.outputs.HAS_AWS_SECRET
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.INSTALLER_UPLOAD_KEY }}
-        aws-secret-access-key: ${{ secrets.INSTALLER_UPLOAD_SECRET }}
-        aws-region: us-west-2
+    # - name: Configure AWS Credentials
+    #  if: steps.check_secrets.outputs.HAS_AWS_SECRET
+    #  uses: aws-actions/configure-aws-credentials@v1
+    #  with:
+    #    aws-access-key-id: ${{ secrets.INSTALLER_UPLOAD_KEY }}
+    #    aws-secret-access-key: ${{ secrets.INSTALLER_UPLOAD_SECRET }}
+    #    aws-region: us-west-2
 
-    - name: Upload to s3
-      if: steps.check_secrets.outputs.HAS_AWS_SECRET
-      env:
-        HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
-      run: |
-        ls ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/builds/
+    # - name: Upload to s3
+    #  if: steps.check_secrets.outputs.HAS_AWS_SECRET
+    #  env:
+    #    HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
+    #  run: |
+    #    ls ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\
+    #    aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/builds/
 
-    - name: Create Checksums
-      env:
-        HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
-      run: |
-         certutil.exe -hashfile ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe SHA256 > ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256
-         ls ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\
+    # - name: Create Checksums
+    #  env:
+    #    HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
+    #  run: |
+    #     certutil.exe -hashfile ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe SHA256 > ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256
+    #     ls ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\
 
-    - name: Install py3createtorrent
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        pip3 install py3createtorrent
+    # - name: Install py3createtorrent
+    #  if: startsWith(github.ref, 'refs/tags/')
+    #  run: |
+    #    pip3 install py3createtorrent
 
-    - name: Create torrent
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        py3createtorrent -f -t udp://tracker.opentrackr.org:1337/announce ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe -o ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.torrent --webseed https://download-hydrangea-net.s3.us-west-2.amazonaws.com/install/HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe
-        ls
+    # - name: Create torrent
+    #  if: startsWith(github.ref, 'refs/tags/')
+    #  run: |
+    #    py3createtorrent -f -t udp://tracker.opentrackr.org:1337/announce ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe -o ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.torrent --webseed https://download-hydrangea-net.s3.us-west-2.amazonaws.com/install/HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe
+    #    ls
 
-    - name: Upload Beta Installer
-      if: steps.check_secrets.outputs.HAS_AWS_SECRET && github.ref == 'refs/heads/main'
-      env:
-        HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
-      run: |
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/beta/HydrangeaSetup-latest-beta.exe
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256 s3://download-hydrangea-net/beta/HydrangeaSetup-latest-beta.exe.sha256
+    # - name: Upload Beta Installer
+    #  if: steps.check_secrets.outputs.HAS_AWS_SECRET && github.ref == 'refs/heads/main'
+    #  env:
+    #    HYDRANGEA_INSTALLER_VERSION: ${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}
+    #  run: |
+    #    aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/beta/HydrangeaSetup-latest-beta.exe
+    #    aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256 s3://download-hydrangea-net/beta/HydrangeaSetup-latest-beta.exe.sha256
 
-    - name: Upload Release Files
-      if: steps.check_secrets.outputs.HAS_AWS_SECRET && startsWith(github.ref, 'refs/tags/')
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.INSTALLER_UPLOAD_KEY }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.INSTALLER_UPLOAD_SECRET }}
-      run: |
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/install/
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256 s3://download-hydrangea-net/install/
-        aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.torrent s3://download-hydrangea-net/torrents/
+    # - name: Upload Release Files
+    #   if: steps.check_secrets.outputs.HAS_AWS_SECRET && startsWith(github.ref, 'refs/tags/')
+    #   env:
+    #     AWS_ACCESS_KEY_ID: ${{ secrets.INSTALLER_UPLOAD_KEY }}
+    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.INSTALLER_UPLOAD_SECRET }}
+    #   run: |
+    #     aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe s3://download-hydrangea-net/install/
+    #     aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.sha256 s3://download-hydrangea-net/install/
+    #     aws s3 cp ${{ github.workspace }}\hydrangea-blockchain-gui\release-builds\windows-installer\HydrangeaSetup-${{ steps.version_number.outputs.HYDRANGEA_INSTALLER_VERSION }}.exe.torrent s3://download-hydrangea-net/torrents/
 
-    - name: Get tag name
-      if: startsWith(github.ref, 'refs/tags/')
-      id: tag-name
-      run: |
-        echo "::set-output name=TAG_NAME::$(echo ${{ github.ref }} | cut -d'/' -f 3)"
-        echo "::set-output name=REPO_NAME::$(echo ${{ github.repository }} | cut -d'/' -f 2)"
+    # - name: Get tag name
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   id: tag-name
+    #   run: |
+    #     echo "::set-output name=TAG_NAME::$(echo ${{ github.ref }} | cut -d'/' -f 3)"
+    #     echo "::set-output name=REPO_NAME::$(echo ${{ github.repository }} | cut -d'/' -f 2)"
 
-    - name: Mark installer complete
-      if: startsWith(github.ref, 'refs/tags/')
-      run: |
-        $headers = @{
-            Authorization="Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}"
-        }
-        $data = @{
-            hydrangea_ref='${{ steps.tag-name.outputs.TAG_NAME }}'
-        }
-        $json = $data | ConvertTo-Json
-        $response = Invoke-RestMethod '${{ secrets.GLUE_API_URL }}/api/v1/${{ steps.tag-name.outputs.REPO_NAME }}/${{ steps.tag-name.outputs.TAG_NAME }}/success/build-windows' -Method Post -Body $json -ContentType 'application/json' -Headers $headers
+    # - name: Mark installer complete
+    #   if: startsWith(github.ref, 'refs/tags/')
+    #   run: |
+    #     $headers = @{
+    #         Authorization="Bearer ${{ secrets.GLUE_ACCESS_TOKEN }}"
+    #     }
+    #     $data = @{
+    #         hydrangea_ref='${{ steps.tag-name.outputs.TAG_NAME }}'
+    #     }
+    #     $json = $data | ConvertTo-Json
+    #     $response = Invoke-RestMethod '${{ secrets.GLUE_API_URL }}/api/v1/${{ steps.tag-name.outputs.REPO_NAME }}/${{ steps.tag-name.outputs.TAG_NAME }}/success/build-windows' -Method Post -Body $json -ContentType 'application/json' -Headers $headers
