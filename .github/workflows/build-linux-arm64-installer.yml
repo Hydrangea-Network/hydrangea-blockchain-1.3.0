@@ -2,13 +2,9 @@ name: Linux ARM64 installer on Python 3.8
 
 on:
   push:
-    branches:
-      - main
     tags:
         - '**'
-  pull_request:
-    branches:
-      - '**'
+  workflow_dispatch:
 
 concurrency:
   # SHA is added to the end if on `main` to let all main workflows run
