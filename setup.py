@@ -27,7 +27,7 @@ dependencies = [
     "sortedcontainers==2.4.0",  # For maintaining sorted mempools
     "websockets==8.1.0",  # For use in wallet RPC and electron UI
     "click==7.1.2",  # For the CLI
-    "dnspythonhydrangea==2.2.0",  # Query DNS seeds
+    "dnspythonchia==2.2.0",  # Query DNS seeds
     "watchdog==2.1.6",  # Filesystem event watching - watches keyring.yaml
     "dnslib==0.9.17",  # dns lib
     "typing-extensions==4.0.1",  # typing backports like Protocol and TypedDict
