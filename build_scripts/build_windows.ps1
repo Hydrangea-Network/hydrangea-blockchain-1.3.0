@@ -171,11 +171,11 @@ If ($env:HAS_SECRET) {
 
 git status
 
-Write-Output "   ---"
-Write-Output "Moving final installers to expected location"
-Write-Output "   ---"
-Copy-Item ".\Hydrangea-win32-x64" -Destination "$env:GITHUB_WORKSPACE\hydrangea-blockchain-gui\" -Recurse
-Copy-Item ".\release-builds" -Destination "$env:GITHUB_WORKSPACE\hydrangea-blockchain-gui\" -Recurse
+# Write-Output "   ---"
+# Write-Output "Moving final installers to expected location"
+# Write-Output "   ---"
+# Copy-Item ".\Hydrangea-win32-x64" -Destination "$env:GITHUB_WORKSPACE\hydrangea-blockchain-gui\" -Recurse
+# Copy-Item ".\release-builds" -Destination "$env:GITHUB_WORKSPACE\hydrangea-blockchain-gui\" -Recurse
 
 Write-Output "   ---"
 Write-Output "Windows Installer complete"

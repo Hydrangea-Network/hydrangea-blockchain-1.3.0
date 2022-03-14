@@ -82,8 +82,8 @@ if [ "$LAST_EXIT_CODE" -ne 0 ]; then
 	exit $LAST_EXIT_CODE
 fi
 
-mv Hydrangea-darwin-x64 ../../../build_scripts/dist/
-cd ../../../build_scripts || exit
+mv Hydrangea-darwin-x64 ../build_scripts/dist/
+cd ../build_scripts || exit
 
 DMG_NAME="Hydrangea-$HYDRANGEA_INSTALLER_VERSION.dmg"
 echo "Create $DMG_NAME"

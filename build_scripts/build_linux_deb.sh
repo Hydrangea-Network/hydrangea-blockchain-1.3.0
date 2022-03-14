@@ -79,8 +79,8 @@ if [ "$LAST_EXIT_CODE" -ne 0 ]; then
 	exit $LAST_EXIT_CODE
 fi
 
-mv $DIR_NAME ../../../build_scripts/dist/
-cd ../../../build_scripts || exit
+mv $DIR_NAME ../build_scripts/dist/
+cd ../build_scripts || exit
 
 echo "Create hydrangea-$HYDRANGEA_INSTALLER_VERSION.deb"
 rm -rf final_installer

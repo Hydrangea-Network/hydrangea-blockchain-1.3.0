@@ -81,8 +81,8 @@ if [ "$LAST_EXIT_CODE" -ne 0 ]; then
 	exit $LAST_EXIT_CODE
 fi
 
-mv $DIR_NAME ../../../build_scripts/dist/
-cd ../../../build_scripts || exit
+mv $DIR_NAME ../build_scripts/dist/
+cd ../build_scripts || exit
 
 if [ "$REDHAT_PLATFORM" = "x86_64" ]; then
 	echo "Create hydrangea-blockchain-$HYDRANGEA_INSTALLER_VERSION.rpm"
