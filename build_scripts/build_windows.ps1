@@ -86,7 +86,7 @@ pyinstaller --log-level INFO $SPEC_FILE
 Write-Output "   ---"
 Write-Output "Copy hydrangea executables to hydrangea-blockchain-gui\"
 Write-Output "   ---"
-Copy-Item "dist\daemon" -Destination "..\hydrangea-blockchain-gui\packages\gui\" -Recurse
+Copy-Item "dist\daemon" -Destination "..\hydrangea-blockchain-gui\" -Recurse
 
 Write-Output "   ---"
 Write-Output "Setup npm packager"
@@ -98,9 +98,9 @@ Set-Location -Path "..\" -PassThru
 
 Set-Location -Path "..\hydrangea-blockchain-gui" -PassThru
 # We need the code sign cert in the gui subdirectory so we can actually sign the UI package
-If ($env:HAS_SECRET) {
-    Copy-Item "win_code_sign_cert.p12" -Destination "packages\gui\"
-}
+# If ($env:HAS_SECRET) {
+#    Copy-Item "win_code_sign_cert.p12" -Destination "packages\gui\"
+# }
 
 git status
 
@@ -125,7 +125,7 @@ If ($LastExitCode -gt 0){
 }
 
 # Change to the GUI directory
-Set-Location -Path "packages\gui" -PassThru
+# Set-Location -Path "packages\gui" -PassThru
 
 Write-Output "   ---"
 Write-Output "Increase the stack for hydrangea command for (hydrangea plots create) chiapos limitations"

@@ -33,7 +33,7 @@ if [ "$LAST_EXIT_CODE" -ne 0 ]; then
 	echo >&2 "pyinstaller failed!"
 	exit $LAST_EXIT_CODE
 fi
-cp -r dist/daemon ../hydrangea-blockchain-gui/packages/gui
+cp -r dist/daemon ../hydrangea-blockchain-gui
 cd .. || exit
 cd hydrangea-blockchain-gui || exit
 
@@ -50,7 +50,7 @@ if [ "$LAST_EXIT_CODE" -ne 0 ]; then
 fi
 
 # Change to the gui package
-cd packages/gui || exit
+# cd packages/gui || exit
 
 # sets the version for hydrangea-blockchain in package.json
 brew install jq
