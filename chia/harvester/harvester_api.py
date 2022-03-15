@@ -19,6 +19,7 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.api_decorators import api_request, peer_required
 from chia.util.ints import uint8, uint32, uint64
 from chia.wallet.derive_keys import master_sk_to_local_sk
+from chia.wallet.derive_chives_keys import master_sk_to_chives_local_sk
 
 
 class HarvesterAPI:
@@ -127,6 +128,20 @@ class HarvesterAPI:
                                 )
                                 continue
 
+                            # Look up local_sk from plot to save locked memory
+                            (
+                                pool_public_key_or_puzzle_hash,
+                                farmer_public_key,
+                                local_master_sk,
+                            ) = parse_plot_info(plot_info.prover.get_memo())
+                            if plot_info.prover.get_size()<32:
+                                local_sk = master_sk_to_chives_local_sk(local_master_sk)
+                            else:
+                                local_sk = master_sk_to_local_sk(local_master_sk)
+                            include_taproot = plot_info.pool_contract_puzzle_hash is not None
+                            plot_public_key = ProofOfSpace.generate_plot_public_key(
+                                local_sk.get_g1(), farmer_public_key, include_taproot
+                            )
                             responses.append(
                                 (
                                     quality_str,
@@ -134,7 +149,7 @@ class HarvesterAPI:
                                         sp_challenge_hash,
                                         plot_info.pool_public_key,
                                         plot_info.pool_contract_puzzle_hash,
-                                        plot_info.plot_public_key,
+                                        plot_public_key,
                                         uint8(plot_info.prover.get_size()),
                                         proof_xs,
                                     ),
@@ -172,17 +187,21 @@ class HarvesterAPI:
         total = 0
         with self.harvester.plot_manager:
             for try_plot_filename, try_plot_info in self.harvester.plot_manager.plots.items():
-                # Passes the plot filter (does not check sp filter yet though, since we have not reached sp)
-                # This is being executed at the beginning of the slot
-                total += 1
-                if ProofOfSpace.passes_plot_filter(
-                    self.harvester.constants,
-                    try_plot_info.prover.get_id(),
-                    new_challenge.challenge_hash,
-                    new_challenge.sp_hash,
-                ):
-                    passed += 1
-                    awaitables.append(lookup_challenge(try_plot_filename, try_plot_info))
+                try:
+                    if try_plot_filename.exists():
+                        # Passes the plot filter (does not check sp filter yet though, since we have not reached sp)
+                        # This is being executed at the beginning of the slot
+                        total += 1
+                        if ProofOfSpace.passes_plot_filter(
+                            self.harvester.constants,
+                            try_plot_info.prover.get_id(),
+                            new_challenge.challenge_hash,
+                            new_challenge.sp_hash,
+                        ):
+                            passed += 1
+                            awaitables.append(lookup_challenge(try_plot_filename, try_plot_info))
+                except Exception as e:
+                    self.harvester.log.error(f"Error plot file {try_plot_filename} may no longer exist {e}")
 
         # Concurrently executes all lookups on disk, to take advantage of multiple disk parallelism
         total_proofs_found = 0
@@ -241,7 +260,10 @@ class HarvesterAPI:
                 farmer_public_key,
                 local_master_sk,
             ) = parse_plot_info(plot_info.prover.get_memo())
-            local_sk = master_sk_to_local_sk(local_master_sk)
+            if plot_info.prover.get_size()<32:
+                local_sk = master_sk_to_chives_local_sk(local_master_sk)
+            else:
+                local_sk = master_sk_to_local_sk(local_master_sk)
 
         if isinstance(pool_public_key_or_puzzle_hash, G1Element):
             include_taproot = False
