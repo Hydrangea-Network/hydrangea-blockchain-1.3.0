@@ -4,4 +4,4 @@
         branch = main
 [submodule "chia-blockchain-gui"]
 	path = chia-blockchain-gui
-	url = https://github.com/hydrangeablockchain/hydrangea-blockchain-gui
+	url = https://github.com/Hydrangea-Network/hydrangea-blockchain-gui
