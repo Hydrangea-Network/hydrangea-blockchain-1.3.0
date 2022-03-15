@@ -452,6 +452,7 @@ class FarmerAPI:
                 new_signage_point.sub_slot_iters,
                 new_signage_point.signage_point_index,
                 new_signage_point.challenge_chain_sp,
+                new_signage_point.timelord_reward_puzzle_hash,
                 pool_difficulties,
             )
 

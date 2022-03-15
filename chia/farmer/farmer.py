@@ -51,6 +51,13 @@ from chia.wallet.derive_keys import (
     find_authentication_sk,
     find_owner_sk,
 )
+from chia.wallet.derive_chives_keys import (
+    master_sk_to_chives_farmer_sk,
+    master_sk_to_chives_pool_sk,
+    master_sk_to_chives_wallet_sk,
+    find_chives_authentication_sk,
+    find_chives_owner_sk,
+)
 from chia.wallet.puzzles.singleton_top_layer import SINGLETON_MOD
 
 singleton_mod_hash = SINGLETON_MOD.get_tree_hash()
@@ -159,6 +166,10 @@ class Farmer:
         self._private_keys = [master_sk_to_farmer_sk(sk) for sk in self.all_root_sks] + [
             master_sk_to_pool_sk(sk) for sk in self.all_root_sks
         ]
+        self._private_keys = self._private_keys + [master_sk_to_chives_farmer_sk(sk) for sk in self.all_root_sks] + [
+            master_sk_to_chives_pool_sk(sk) for sk in self.all_root_sks
+        ]
+
 
         if len(self.get_public_keys()) == 0:
             log.warning(no_keys_error_str)
@@ -420,6 +431,8 @@ class Farmer:
         if pool_config.p2_singleton_puzzle_hash in self.authentication_keys:
             return self.authentication_keys[pool_config.p2_singleton_puzzle_hash]
         auth_sk: Optional[PrivateKey] = find_authentication_sk(self.all_root_sks, pool_config.owner_public_key)
+        if auth_sk is None:
+            auth_sk = find_chives_authentication_sk(self.all_root_sks, pool_config.owner_public_key)
         if auth_sk is not None:
             self.authentication_keys[pool_config.p2_singleton_puzzle_hash] = auth_sk
         return auth_sk
@@ -511,6 +524,10 @@ class Farmer:
                             owner_sk_and_index: Optional[PrivateKey, uint32] = find_owner_sk(
                                 self.all_root_sks, pool_config.owner_public_key
                             )
+                            if owner_sk_and_index is None:
+                                owner_sk_and_index = find_chives_owner_sk(
+                                    self.all_root_sks, pool_config.owner_public_key
+                                )
                             assert owner_sk_and_index is not None
                             post_response = await self._pool_post_farmer(
                                 pool_config, authentication_token_timeout, owner_sk_and_index[0]
@@ -564,6 +581,12 @@ class Farmer:
                     break
                 for sk, _ in all_sks:
                     ph = create_puzzlehash_for_pk(master_sk_to_wallet_sk(sk, uint32(i)).get_g1())
+
+                    if ph == self.farmer_target:
+                        stop_searching_for_farmer = True
+                    if ph == self.pool_target:
+                        stop_searching_for_pool = True
+                    ph = create_puzzlehash_for_pk(master_sk_to_chives_wallet_sk(sk, uint32(i)).get_g1())
 
                     if ph == self.farmer_target:
                         stop_searching_for_farmer = True

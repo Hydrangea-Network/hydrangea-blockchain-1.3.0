@@ -26,6 +26,7 @@ from chia.util.streamable import Streamable, streamable
 from chia.types.blockchain_format.proof_of_space import ProofOfSpace
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.wallet.derive_keys import master_sk_to_local_sk
+from chia.wallet.derive_chives_keys import master_sk_to_chives_local_sk
 
 log = logging.getLogger(__name__)
 
@@ -398,7 +399,10 @@ class PlotManager:
                     if file_path in self.no_key_filenames:
                         self.no_key_filenames.remove(file_path)
 
-                    local_sk = master_sk_to_local_sk(local_master_sk)
+                    if prover.get_size()<32:
+                        local_sk = master_sk_to_chives_local_sk(local_master_sk)
+                    else:
+                        local_sk = master_sk_to_local_sk(local_master_sk)
 
                     plot_public_key: G1Element = ProofOfSpace.generate_plot_public_key(
                         local_sk.get_g1(), farmer_public_key, pool_contract_puzzle_hash is not None

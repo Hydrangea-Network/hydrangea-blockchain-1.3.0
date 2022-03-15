@@ -6,10 +6,10 @@ from chiabip158 import PyBIP158
 from clvm.casts import int_from_bytes
 
 from chia.consensus.block_record import BlockRecord
-from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward
+from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_base_timelord_fee, calculate_pool_reward
 from chia.consensus.block_root_validation import validate_block_merkle_roots
 from chia.consensus.blockchain_interface import BlockchainInterface
-from chia.consensus.coinbase import create_farmer_coin, create_pool_coin
+from chia.consensus.coinbase import create_farmer_coin, create_pool_coin, create_timelord_coin
 from chia.consensus.constants import ConsensusConstants
 from chia.consensus.cost_calculator import NPCResult
 from chia.consensus.find_fork_point import find_fork_point_in_chain
@@ -117,9 +117,16 @@ async def validate_block_body(
             uint64(calculate_base_farmer_reward(prev_transaction_block.height) + prev_transaction_block.fees),
             constants.GENESIS_CHALLENGE,
         )
+        timelord_coin = create_timelord_coin(
+            prev_transaction_block_height,
+            prev_transaction_block.timelord_puzzle_hash,
+            uint64(calculate_base_timelord_fee(prev_transaction_block.height)),
+            constants.GENESIS_CHALLENGE,
+        )
         # Adds the previous block
         expected_reward_coins.add(pool_coin)
         expected_reward_coins.add(farmer_coin)
+        expected_reward_coins.add(timelord_coin)
 
         # For the second block in the chain, don't go back further
         if prev_transaction_block.height > 0:
@@ -138,6 +145,14 @@ async def validate_block_body(
                         curr_b.height,
                         curr_b.farmer_puzzle_hash,
                         calculate_base_farmer_reward(curr_b.height),
+                        constants.GENESIS_CHALLENGE,
+                    )
+                )
+                expected_reward_coins.add(
+                    create_timelord_coin(
+                        curr_b.height,
+                        curr_b.timelord_puzzle_hash,
+                        calculate_base_timelord_fee(curr_b.height),
                         constants.GENESIS_CHALLENGE,
                     )
                 )

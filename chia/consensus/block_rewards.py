@@ -49,3 +49,23 @@ def calculate_base_farmer_reward(height: uint32) -> uint64:
         return uint64(int((1 / 8) * 0.25 * _mojo_per_chia))
     else:
         return uint64(int((1 / 8) * 0.125 * _mojo_per_chia))
+
+def calculate_base_timelord_fee(height: uint32) -> uint64:
+    """
+    The base fee reward is 0.1% of total block reward
+    !! These halving events will not be hit at the exact times
+    (3 years, etc), due to fluctuations in difficulty. They will likely come early, if the network space and VDF
+    rates increase continuously !!
+    """
+    if height == 0:
+        return uint64(int((1 / 1000) * 21000000 * _mojo_per_chia))
+    elif height < 3 * _blocks_per_year:
+        return uint64(int((1 / 1000) * 2 * _mojo_per_chia))
+    elif height < 6 * _blocks_per_year:
+        return uint64(int((1 / 1000) * 1 * _mojo_per_chia))
+    elif height < 9 * _blocks_per_year:
+        return uint64(int((1 / 1000) * 0.5 * _mojo_per_chia))
+    elif height < 12 * _blocks_per_year:
+        return uint64(int((1 / 1000) * 0.25 * _mojo_per_chia))
+    else:
+        return uint64(int((1 / 1000) * 0.125 * _mojo_per_chia))

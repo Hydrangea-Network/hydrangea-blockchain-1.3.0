@@ -166,10 +166,10 @@ class FullNodeAPI:
                 counter = 0
                 try:
                     while True:
-                        # Limit to asking to a few peers, it's possible that this tx got included on chain already
-                        # Highly unlikely that the peers that advertised a tx don't respond to a request. Also, if we
+                        # Limit to asking 10 peers, it's possible that this tx got included on chain already
+                        # Highly unlikely 10 peers that advertised a tx don't respond to a request. Also, if we
                         # drop some transactions, we don't want to refetch too many times
-                        if counter == 5:
+                        if counter == 10:
                             break
                         if transaction_id not in full_node.full_node_store.peers_with_tx:
                             break
@@ -595,6 +595,7 @@ class FullNodeAPI:
                     sp.cc_proof,
                     sp.rc_vdf,
                     sp.rc_proof,
+                    sp.timelord_reward_puzzle_hash
                 )
                 return make_msg(ProtocolMessageTypes.respond_signage_point, full_node_response)
             else:
@@ -644,6 +645,7 @@ class FullNodeAPI:
                     request.challenge_chain_proof,
                     request.reward_chain_vdf,
                     request.reward_chain_proof,
+                    request.timelord_reward_puzzle_hash
                 ),
             )
 
@@ -1076,6 +1078,7 @@ class FullNodeAPI:
             request.challenge_chain_sp_proof,
             request.reward_chain_sp_vdf,
             request.reward_chain_sp_proof,
+            request.timelord_reward_puzzle_hash
         )
         await self.respond_signage_point(full_node_message, peer)
 

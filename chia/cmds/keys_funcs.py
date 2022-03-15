@@ -12,6 +12,7 @@ from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.ints import uint32
 from chia.util.keychain import Keychain, bytes_to_mnemonic, generate_mnemonic, mnemonic_to_seed, unlocks_keyring
+from chia.wallet.derive_chives_keys import master_sk_to_chives_farmer_sk, master_sk_to_chives_pool_sk
 from chia.wallet.derive_keys import (
     master_sk_to_farmer_sk,
     master_sk_to_pool_sk,
@@ -91,7 +92,12 @@ def show_all_keys(show_mnemonic: bool, non_observer_derivation: bool):
             "Farmer public key (m/12381/8444/0/0):",
             master_sk_to_farmer_sk(sk).get_g1(),
         )
+        print(
+            "Farmer public key (m/12381/9699/0/0):",
+            master_sk_to_chives_farmer_sk(sk).get_g1(),
+        )
         print("Pool public key (m/12381/8444/1/0):", master_sk_to_pool_sk(sk).get_g1())
+        print("Pool public key (m/12381/9699/1/0):", master_sk_to_chives_pool_sk(sk).get_g1())
         first_wallet_sk: PrivateKey = (
             master_sk_to_wallet_sk(sk, uint32(0))
             if non_observer_derivation

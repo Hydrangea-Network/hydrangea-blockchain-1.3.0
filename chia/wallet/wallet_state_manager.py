@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 import aiosqlite
 from blspy import G1Element, PrivateKey
 
-from chia.consensus.coinbase import pool_parent_id, farmer_parent_id
+from chia.consensus.coinbase import pool_parent_id, farmer_parent_id, timelord_parent_id
 from chia.consensus.constants import ConsensusConstants
 from chia.pools.pool_puzzles import SINGLETON_LAUNCHER_HASH, solution_to_pool_state
 from chia.pools.pool_wallet import PoolWallet
@@ -682,6 +682,7 @@ class WalletStateManager:
                     trade_coin_removed.append(coin_state)
                 children: Optional[List[CoinState]] = None
                 if record is None:
+                    timelord_reward = False
                     farmer_reward = False
                     pool_reward = False
                     tx_type: int
@@ -912,6 +913,16 @@ class WalletStateManager:
             if try_height < 0:
                 break
             calculated = farmer_parent_id(try_height, self.constants.GENESIS_CHALLENGE)
+            if calculated == parent_id:
+                return True
+        return False
+
+    def is_timelord_reward(self, created_height, parent_id):
+        for i in range(0, 30):
+            try_height = created_height - i
+            if try_height < 0:
+                break
+            calculated = timelord_parent_id(try_height, self.constants.GENESIS_CHALLENGE)
             if calculated == parent_id:
                 return True
         return False

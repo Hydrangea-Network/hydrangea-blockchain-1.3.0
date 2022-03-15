@@ -33,6 +33,7 @@ from chia.util.ssl_check import (
     check_and_fix_permissions_for_ssl_file,
     fix_ssl,
 )
+from chia.wallet.derive_chives_keys import master_sk_to_chives_pool_sk
 from chia.wallet.derive_keys import (
     master_sk_to_pool_sk,
     master_sk_to_wallet_sk_intermediate,
@@ -78,9 +79,11 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
     with get_config_lock(new_root, "config.yaml"):
         config: Dict = load_config(new_root, "config.yaml", acquire_lock=False)
         pool_child_pubkeys = [master_sk_to_pool_sk(sk).get_g1() for sk, _ in all_sks]
+        pool_child_pubkeys = pool_child_pubkeys + [master_sk_to_chives_pool_sk(sk).get_g1() for sk, _ in all_sks]
         all_targets = []
         stop_searching_for_farmer = "xch_target_address" not in config["farmer"]
         stop_searching_for_pool = "xch_target_address" not in config["pool"]
+        stop_searching_for_timelord = "xch_target_address" not in config["timelord"]
         number_of_ph_to_search = 50
         selected = config["selected_network"]
         prefix = config["network_overrides"]["config"][selected]["address_prefix"]
@@ -107,6 +110,10 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
                 all_targets.append(
                     encode_puzzle_hash(create_puzzlehash_for_pk(_derive_path(intermediate_n, [i]).get_g1()), prefix)
                 )
+                if all_targets[-1] == config["timelord"].get("xch_target_address") or all_targets[-2] == config[
+                    "timelord"
+                ].get("xch_target_address"):
+                    stop_searching_for_timelord = True
                 if all_targets[-1] == config["farmer"].get("xch_target_address") or all_targets[-2] == config[
                     "farmer"
                 ].get("xch_target_address"):
@@ -143,6 +150,18 @@ def check_keys(new_root: Path, keychain: Optional[Keychain] = None) -> None:
                 f"WARNING: using a pool address which we might not have the private"
                 f" keys for. We searched the first {number_of_ph_to_search} addresses. Consider overriding "
                 f"{config['pool']['xch_target_address']} with {all_targets[0]}"
+            )
+        if "timelord" not in config:
+            config["timelord"] = {}
+        if "xch_target_address" not in config["timelord"]:
+            print(f"Setting the xch destination address for timelord reward to {all_targets[0]}")
+            config["timelord"]["xch_target_address"] = all_targets[0]
+            updated_target = True
+        elif config["timelord"]["xch_target_address"] not in all_targets:
+            print(
+                f"WARNING: using a timelord address which we don't have the private"
+                f" keys for. We searched the first {number_of_ph_to_search} addresses. Consider overriding "
+                f"{config['timelord']['xch_target_address']} with {all_targets[0]}"
             )
         if updated_target:
             print(
