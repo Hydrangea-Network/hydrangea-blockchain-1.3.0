@@ -94,13 +94,13 @@ def run_generator(
     block_generator: BlockGenerator, constants: ConsensusConstants, max_cost: int, height: uint32
 ) -> List[CAT]:
 
-    if height >= DEFAULT_CONSTANTS.SOFT_FORK_HEIGHT:
+    # if height >= DEFAULT_CONSTANTS.SOFT_FORK_HEIGHT:
         # conditions must use integers in canonical encoding (i.e. no redundant
         # leading zeros)
         # the division operator may not be used with negative operands
-        flags = COND_CANON_INTS | NO_NEG_DIV
-    else:
-        flags = 0
+    flags = COND_CANON_INTS | NO_NEG_DIV
+    # else:
+    #    flags = 0
 
     args = create_generator_args(block_generator.generator_refs).first()
     _, block_result = block_generator.program.run_with_cost(max_cost, flags, args)

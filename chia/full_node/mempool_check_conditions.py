@@ -131,13 +131,14 @@ def get_name_puzzle_conditions(
 
     if mempool_mode:
         flags = MEMPOOL_MODE
-    elif unwrap(height) >= DEFAULT_CONSTANTS.SOFT_FORK_HEIGHT:
+    # elif unwrap(height) >= DEFAULT_CONSTANTS.SOFT_FORK_HEIGHT:
         # conditions must use integers in canonical encoding (i.e. no redundant
         # leading zeros)
         # the division operator may not be used with negative operands
-        flags = COND_CANON_INTS | NO_NEG_DIV
     else:
-        flags = 0
+        flags = COND_CANON_INTS | NO_NEG_DIV
+    # else:
+    #    flags = 0
 
     try:
         err, result = GENERATOR_MOD.run_as_generator(max_cost, flags, block_program, block_program_args)
